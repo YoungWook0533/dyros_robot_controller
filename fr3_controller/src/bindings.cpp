@@ -7,7 +7,6 @@
 
 #include "fr3_controller/robot_data.h"
 #include "fr3_controller/controller.h"
-#include "fr3_controller/passive_controller.h"
 
 namespace bp = boost::python;
 using namespace Eigen;
@@ -103,9 +102,4 @@ BOOST_PYTHON_MODULE(fr3_controller_wrapper_cpp)
     bp::class_<Controller, boost::noncopyable>("Controller", bp::init<double>())
         .def("tmpControl", &Controller::tmpControl)
         ;  
-    // Bind Passive Controller class
-    bp::class_<PassiveController, boost::noncopyable>("PassiveController", bp::init<RobotData*>())
-        .def("solveController", &PassiveController::solveController)
-        .def("getOptTorque", &PassiveController::getOptTorque)
-        ;
 }

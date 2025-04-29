@@ -7,7 +7,6 @@ from fr3_controller_wrapper_cpp import Controller as Controllercpp
 from std_msgs.msg import Int32
 from geometry_msgs.msg import PoseStamped
 from scipy.spatial.transform import Rotation as R
-from fr3_controller_wrapper_cpp import PassiveController as PassiveControllercpp
 
 class FR3Controller(ControllerInterface):
     """
@@ -45,7 +44,6 @@ class FR3Controller(ControllerInterface):
         self.key_subscriber = self.node.create_subscription(Int32, 'fr3_controller/mode_input', self.keyCallback, 10)
         self.robot_data = FR3RobotData(self.node, mj_joint_names)
         
-        self.passive_controller = PassiveControllercpp(self.robot_data.robot_data)
         self.target_pose = self.node.create_subscription(PoseStamped, 'fr3_controller/target_pose', self.targetPoseCallback, 10)
             
     def starting(self) -> None:
@@ -142,8 +140,6 @@ class FR3Controller(ControllerInterface):
             self.setMode('init')
         elif msg.data == 2:
             self.setMode('home')
-        elif msg.data == 3:
-            self.setMode('passive_control')
                     
     def setMode(self, mode: str):
         """
@@ -168,11 +164,6 @@ class FR3Controller(ControllerInterface):
             self.q_init = self.robot_data.q
             self.control_start_time = self.current_time
             self.is_mode_changed = False
-            
-            if self.mode == 'passive_control':
-                self.target_pose = self.robot_data.getPose()
-            
-            
         
         # Compute desired joint positions based on the current control mode.
         if self.mode == 'init':
@@ -199,13 +190,6 @@ class FR3Controller(ControllerInterface):
                 np.zeros(7)                     # Final velocity (assumed zero)
             )
             self.torque_desired = self.PDControl(self.q_desired, np.zeros(7), 1000, 100)
-        elif self.mode == 'passive_control':
-            is_solved = self.passive_controller.solveController(self.target_pose) 
-            if is_solved:
-                self.torque_desired = self.passive_controller.getOptTorque()
-            else:
-                self.node.get_logger().info("[FR3Controller] Passive Controller did not solved properly!")
-                self.torque_desired = np.zeros(7)
         else:
             self.torque_desired = np.zeros(7)
 
@@ -233,13 +217,8 @@ class FR3Controller(ControllerInterface):
                 msg.pose.orientation.z,
                 msg.pose.orientation.w]
 
-        # 4×4 단위행렬 생성
         T = np.eye(4)
-        
-        # 회전행렬 대입
         T[:3, :3] = R.from_quat(quat).as_matrix()
-        
-        # translation 대입
         T[:3, 3] = [msg.pose.position.x,
                     msg.pose.position.y,
                     msg.pose.position.z]

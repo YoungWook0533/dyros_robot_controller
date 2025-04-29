@@ -1,13 +1,12 @@
 import numpy as np
-from mujoco_ros_sim import RobotDataInterface
 import os
 from rclpy.node import Node
 from ament_index_python.packages import get_package_share_directory
 from fr3_controller_wrapper_cpp import RobotData as RobotDatacpp
 
-class FR3RobotData(RobotDataInterface):
+class FR3RobotData():
     """
-    Concrete implementation of RobotDataInterface for the FR3 robot.
+    Concrete implementation of robot state data for the FR3 robot.
     
     This class loads robot-specific data from a URDF file and uses a C++ wrapper
     (RobotDatacpp) to handle the robot's state. It provides an interface to update
@@ -38,8 +37,8 @@ class FR3RobotData(RobotDataInterface):
         Returns:
             None
         """
-        # Initialize the base RobotDataInterface with the ROS node and joint names from MuJoCo.
-        super().__init__(node, mj_joint_names)
+        self.node = node
+        self.mj_joint_names = mj_joint_names
         
         # Construct the path to the FR3 URDF file using the package share directory.
         urdf_path = os.path.join(
@@ -94,6 +93,7 @@ class FR3RobotData(RobotDataInterface):
             self.node.get_logger().error("[FR3RobotData] Failed to update robot state.")
 
 # ==================================================================================================
+
     def getPose(self, link_name: str="fr3_link8"):
         return self.robot_data.getPose(link_name)
     
