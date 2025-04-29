@@ -1,43 +1,37 @@
-# fr3_controller/CMakeLists.txt
-
-# 상위 CMake에서 find_package(...)를 이미 했다고 가정.
-# 필요하다면 중복으로 find_package(...)를 호출해도 무방.
 find_package(OsqpEigen REQUIRED)
 
 #-----------------------------------------
-# include 디렉토리
+# Include directories
 #-----------------------------------------
 include_directories(
   include
 )
 
-
 #-----------------------------------------
-# 1) C++ 라이브러리 (로봇 로직)
+# 1) C++ library (robot logic)
 #-----------------------------------------
 add_library(fr3_controller SHARED
   src/controller.cpp
   src/robot_data.cpp
-  src/passive_controller.cpp
 )
 
 target_link_libraries(fr3_controller
   Eigen3::Eigen
   rclcpp::rclcpp
   OsqpEigen::OsqpEigen
-  # 등 필요한 라이브러리
+  # and other necessary libraries
 )
 
 #-----------------------------------------
-# 2) Python wrapper 라이브러리 (Boost.Python)
+# 2) Python wrapper library (Boost.Python)
 #-----------------------------------------
 add_library(fr3_controller_wrapper_cpp SHARED
   src/bindings.cpp
 )
 
 set_target_properties(fr3_controller_wrapper_cpp PROPERTIES
-  OUTPUT_NAME "fr3_controller_wrapper_cpp"  # 실제 so 파일 이름
-  PREFIX ""                                 # (리눅스에서 'lib' 제거)
+  OUTPUT_NAME "fr3_controller_wrapper_cpp"  # actual .so file name
+  PREFIX ""                                 # (remove 'lib' on Linux)
 )
 
 target_link_libraries(fr3_controller_wrapper_cpp
@@ -51,22 +45,22 @@ target_link_libraries(fr3_controller_wrapper_cpp
 )
 
 #-----------------------------------------
-# 3) 헤더(선택) 설치
+# 3) Optional header installation
 #-----------------------------------------
 # install(DIRECTORY include/
 #   DESTINATION include/
 # )
 
 #-----------------------------------------
-# 4) Python 모듈 설치 (해당 폴더 안에 __init__.py 등 있다면)
+# 4) Python module installation (if the folder contains __init__.py, etc.)
 #-----------------------------------------
 set(PYTHON_INSTALL_DIR "lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages")
 ament_python_install_package(fr3_controller)
-# => fr3_controller/ 디렉토리를 파이썬 모듈로 설치 (setup.py는 상위에서 통합되거나 여기에 둘 수도 있음)
+# => installs the "fr3_controller/" directory as a Python module (setup.py can be integrated in the root or placed here)
 
 #-----------------------------------------
-# 5) Boost.Python wrapper 라이브러리 설치
-#    => 최종적으로 python3.x/site-packages/ 밑에 "fr3_controller_wrapper_cpp.so"가 위치
+# 5) Boost.Python wrapper library installation
+#    => the final "fr3_controller_wrapper_cpp.so" will be located under python3.x/site-packages/
 #-----------------------------------------
 install(TARGETS fr3_controller fr3_controller_wrapper_cpp
     LIBRARY DESTINATION lib
@@ -76,9 +70,8 @@ install(TARGETS fr3_controller_wrapper_cpp
   LIBRARY DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
 )
 
-
 install(DIRECTORY robot/ DESTINATION share/${PROJECT_NAME}/fr3_controller/robot)
 #-----------------------------------------
-# NOTE: 여기서는 ament_package()를 호출하지 않음.
-#       상위(루트) CMakeLists에서만 ament_package() 호출.
+# NOTE: ament_package() is not called here.
+#       It is only called in the root CMakeLists.
 #-----------------------------------------

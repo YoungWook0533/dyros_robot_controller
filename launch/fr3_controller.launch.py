@@ -7,36 +7,34 @@ from launch.actions import ExecuteProcess
 def generate_launch_description():
     """
     fr3_controller.launch.py:
-    - mujoco_ros_sim 패키지의 'mujoco_ros_sim' 노드를 실행
-    - 파라미터로 'controller_class', 'robot_data_class'를
-      각각 'dyros_controller.fr3_controller.controller.FR3Controller',
-           'dyros_controller.fr3_controller.robot_data.FR3RobotData'
-      로 설정
-    - 필요한 경우 'robot_name'도 launch argument로 받아서 세팅
+    - Executes the 'mujoco_ros_sim' node from the mujoco_ros_sim package.
+    - Sets the 'controller_class' parameter (and optionally 'robot_data_class')
+      with the default value 'fr3_controller.controller.FR3Controller'
+    - Accepts a 'robot_name' launch argument to specify the robot model used in MuJoCo.
     """
 
-    # (옵션) 로봇 이름 파라미터
+    # Optional robot name parameter
     robot_name_arg = DeclareLaunchArgument(
         'robot_name',
         default_value='franka_fr3_torque',
         description='Name of the robot model used in MuJoCo'
     )
 
-    # 커스텀 컨트롤러/로봇데이터 클래스 경로
+    # Python path for the custom controller class
     controller_class_arg = DeclareLaunchArgument(
         'controller_class',
         default_value='fr3_controller.controller.FR3Controller',
         description='Python path for FR3Controller'
     )
 
-    # 런치에서 참조할 LaunchConfiguration
+    # Launch configurations for the parameters
     robot_name = LaunchConfiguration('robot_name')
     controller_class = LaunchConfiguration('controller_class')
 
-    # 실제 시뮬레이션 노드 (mujoco_ros_sim) 실행
+    # Node to run the mujoco_ros_sim simulation
     sim_node = Node(
-        package='mujoco_ros_sim',          # 패키지 이름 (setup.py의 name, package.xml의 <name>)
-        executable='mujoco_ros_sim',       # entry_point: mujoco_ros_sim.py의 main
+        package='mujoco_ros_sim',          # Package name (see setup.py and package.xml)
+        executable='mujoco_ros_sim',       # Entry point: main function in mujoco_ros_sim.py
         name='mujoco_sim_node',
         output='screen',
         parameters=[

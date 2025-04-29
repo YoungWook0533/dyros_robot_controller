@@ -6,7 +6,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 add_compile_options(-O3 -march=native)
 
-# 1) 패키지 설정
+# 1) Package configuration
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 
@@ -23,20 +23,17 @@ include_directories(
   ${eigenpy_INCLUDE_DIRS}
 )
 
-# 2) 서브 디렉토리들
-# fr3_controller, husky_controller, etc.
+# 2) Subdirectories (e.g., fr3_controller, husky_controller, etc.)
 add_subdirectory(fr3_controller)
 # add_subdirectory(husky_controller)
 
-# 3) (옵션) Python 설치
+# 3) (Optional) Install Python package
 # ament_python_install_package(${PROJECT_NAME})
-# => 만약 상위 레벨 Python 모듈이 있다면 설치 가능 (없으면 빼도 됨)
+# Uncomment the line above if there is a top-level Python module to install.
 
-# 4) ament_package
-
+# 4) Install launch files
 install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
-
 
 ament_package()

@@ -25,43 +25,179 @@ namespace FR3Controller
     class RobotData
     {
         public:
+            // @brief Constructor that loads robot model from URDF.
+            // @param urdf_path Path to URDF file.
             RobotData(const std::string& urdf_path);
+
+            // @brief Destructor.
             ~RobotData();
+
+            // @brief Update robot state (joint positions, velocities, external torques).
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @param tau_ext External torque vector.
+            // @return True if successful.
             bool updateState(const VectorXd& q, const VectorXd& qdot, const VectorXd& tau_ext);
 
-            std::vector<std::string> getJointNames() { return joint_names_; }
+            // @brief Get list of joint names.
+            // @return Vector of joint name strings.
+            std::vector<std::string> getJointNames(){return joint_names_;}
 
-            Matrix4d computePose(const VectorXd& q, const std::string& link_name=ee_name_); 
+            // @brief Compute pose (4x4 transformation matrix) of a given link.
+            // @param q Joint position vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 4x4 pose matrix.
+            Matrix4d computePose(const VectorXd& q, const std::string& link_name=ee_name_);
+
+            // @brief Compute spatial Jacobian of a given link.
+            // @param q Joint position vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6 x nq Jacobian matrix.
             MatrixXd computeJacobian(const VectorXd& q, const std::string& link_name=ee_name_);
+
+            // @brief Compute time derivative of Jacobian of a given link.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6 x nq time derivative of Jacobian.
             MatrixXd computeJacobianTimeVariation(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
+
+            // @brief Compute spatial velocity of a given link.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D velocity vector.
             Vector6d computeVelocity(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
+
+            // @brief Compute joint-space mass (inertia) matrix.
+            // @param q Joint position vector.
+            // @return nq x nq mass matrix.
             MatrixXd computeMassMatrix(const VectorXd& q);
+
+            // @brief Compute Coriolis and centrifugal forces.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @return nq-dimensional Coriolis vector.
             VectorXd computeCoriolis(const VectorXd& q, const VectorXd& qdot);
+
+            // @brief Compute gravity torque vector.
+            // @param q Joint position vector.
+            // @return nq-dimensional gravity vector.
             VectorXd computeGravity(const VectorXd& q);
+
+            // @brief Compute nonlinear effects (gravity + Coriolis).
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @return nq-dimensional nonlinear effects vector.
             VectorXd computeNonlinearEffects(const VectorXd& q, const VectorXd& qdot);
+
+            // @brief Compute task-space mass matrix for a given link.
+            // @param q Joint position vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6x6 task mass matrix.
             Matrix6d computeTaskMassMatrix(const VectorXd& q, const std::string& link_name=ee_name_);
+
+            // @brief Compute task-space Coriolis force for a given link.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space Coriolis vector.
             Vector6d computeTaskCoriolis(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
+
+            // @brief Compute task-space gravity force for a given link.
+            // @param q Joint position vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space gravity vector.
             Vector6d computeTaskGravity(const VectorXd& q, const std::string& link_name=ee_name_);
+
+            // @brief Compute task-space nonlinear effects (gravity + Coriolis) for a given link.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space nonlinear effects vector.
             Vector6d computeTaskNonlinearEffects(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
 
+            // ---------------- Getters ----------------
+
+            // @brief Get current joint positions.
+            // @return nq-dimensional joint position vector.
             VectorXd getJointPosition(){return q_;}
+
+            // @brief Get current joint velocities.
+            // @return nq-dimensional joint velocity vector.
             VectorXd getJointVelocity(){return qdot_;}
+
+            // @brief Get current external joint torques.
+            // @return nq-dimensional external torque vector.
             VectorXd getExtTorque(){return tau_ext_;}
-            Matrix4d getPose(const std::string& link_name=ee_name_); 
+
+            // @brief Get cached pose of a given link.
+            // @param link_name Link name (default: end-effector).
+            // @return 4x4 pose matrix.
+            Matrix4d getPose(const std::string& link_name=ee_name_);
+
+            // @brief Get cached Jacobian of a given link.
+            // @param link_name Link name (default: end-effector).
+            // @return 6 x nq Jacobian matrix.
             MatrixXd getJacobian(const std::string& link_name=ee_name_);
+
+            // @brief Get cached time derivative of Jacobian of a given link.
+            // @param link_name Link name (default: end-effector).
+            // @return 6 x nq time derivative of Jacobian.
             MatrixXd getJacobianTimeVariation(const std::string& link_name=ee_name_);
+
+            // @brief Get cached velocity of a given link.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D velocity vector.
             Vector6d getVelocity(const std::string& link_name=ee_name_);
+
+            // @brief Get cached joint-space mass matrix.
+            // @return nq x nq mass matrix.
             MatrixXd getMassMatrix();
+
+            // @brief Get cached Coriolis and centrifugal forces.
+            // @return nq-dimensional Coriolis vector.
             VectorXd getCoriolis();
+
+            // @brief Get cached gravity vector.
+            // @return nq-dimensional gravity vector.
             VectorXd getGravity();
+
+            // @brief Get cached nonlinear effects.
+            // @return nq-dimensional nonlinear effects vector.
             VectorXd getNonlinearEffects();
+
+            // @brief Get cached task-space mass matrix.
+            // @param link_name Link name (default: end-effector).
+            // @return 6x6 task-space mass matrix.
             Matrix6d getTaskMassMatrix(const std::string& link_name=ee_name_);
+
+            // @brief Get cached task-space Coriolis force.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space Coriolis vector.
             Vector6d getTaskCoriolis(const std::string& link_name=ee_name_);
+
+            // @brief Get cached task-space gravity force.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space gravity vector.
             Vector6d getTaskGravity(const std::string& link_name=ee_name_);
+
+            // @brief Get cached task-space nonlinear effects.
+            // @param link_name Link name (default: end-effector).
+            // @return 6D task-space nonlinear effects vector.
             Vector6d getTaskNonlinearEffects(const std::string& link_name=ee_name_);
 
         private:
+            // @brief Internal function to update forward kinematics.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @return True if successful.
             bool updateKinematics(const VectorXd& q, const VectorXd& qdot);
+
+            // @brief Internal function to update dynamics terms.
+            // @param q Joint position vector.
+            // @param qdot Joint velocity vector.
+            // @return True if successful.
             bool updateDynamics(const VectorXd& q, const VectorXd& qdot);
 
             // pinocchio data
