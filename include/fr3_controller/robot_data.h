@@ -27,7 +27,8 @@ namespace FR3Controller
         public:
             // @brief Constructor that loads robot model from URDF.
             // @param urdf_path Path to URDF file.
-            RobotData(const std::string& urdf_path);
+            // @param verbose Joint information
+            RobotData(const std::string& urdf_path, const bool verbose=false);
 
             // @brief Destructor.
             ~RobotData();
@@ -37,7 +38,7 @@ namespace FR3Controller
             // @param qdot Joint velocity vector.
             // @param tau_ext External torque vector.
             // @return True if successful.
-            bool updateState(const VectorXd& q, const VectorXd& qdot, const VectorXd& tau_ext);
+            bool updateState(const VectorXd& q, const VectorXd& qdot);
 
             // @brief Get list of joint names.
             // @return Vector of joint name strings.
@@ -91,32 +92,6 @@ namespace FR3Controller
             // @return nq-dimensional nonlinear effects vector.
             VectorXd computeNonlinearEffects(const VectorXd& q, const VectorXd& qdot);
 
-            // @brief Compute task-space mass matrix for a given link.
-            // @param q Joint position vector.
-            // @param link_name Link name (default: end-effector).
-            // @return 6x6 task mass matrix.
-            Matrix6d computeTaskMassMatrix(const VectorXd& q, const std::string& link_name=ee_name_);
-
-            // @brief Compute task-space Coriolis force for a given link.
-            // @param q Joint position vector.
-            // @param qdot Joint velocity vector.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space Coriolis vector.
-            Vector6d computeTaskCoriolis(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
-
-            // @brief Compute task-space gravity force for a given link.
-            // @param q Joint position vector.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space gravity vector.
-            Vector6d computeTaskGravity(const VectorXd& q, const std::string& link_name=ee_name_);
-
-            // @brief Compute task-space nonlinear effects (gravity + Coriolis) for a given link.
-            // @param q Joint position vector.
-            // @param qdot Joint velocity vector.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space nonlinear effects vector.
-            Vector6d computeTaskNonlinearEffects(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
-
             // ---------------- Getters ----------------
 
             // @brief Get current joint positions.
@@ -126,10 +101,6 @@ namespace FR3Controller
             // @brief Get current joint velocities.
             // @return nq-dimensional joint velocity vector.
             VectorXd getJointVelocity(){return qdot_;}
-
-            // @brief Get current external joint torques.
-            // @return nq-dimensional external torque vector.
-            VectorXd getExtTorque(){return tau_ext_;}
 
             // @brief Get cached pose of a given link.
             // @param link_name Link name (default: end-effector).
@@ -153,39 +124,21 @@ namespace FR3Controller
 
             // @brief Get cached joint-space mass matrix.
             // @return nq x nq mass matrix.
-            MatrixXd getMassMatrix();
+            MatrixXd getMassMatrix(){return M_;}
 
             // @brief Get cached Coriolis and centrifugal forces.
             // @return nq-dimensional Coriolis vector.
-            VectorXd getCoriolis();
+            VectorXd getCoriolis(){return c_;}
 
             // @brief Get cached gravity vector.
             // @return nq-dimensional gravity vector.
-            VectorXd getGravity();
+            VectorXd getGravity(){return g_;}
 
             // @brief Get cached nonlinear effects.
             // @return nq-dimensional nonlinear effects vector.
-            VectorXd getNonlinearEffects();
+            VectorXd getNonlinearEffects(){return NLE_;}
 
-            // @brief Get cached task-space mass matrix.
-            // @param link_name Link name (default: end-effector).
-            // @return 6x6 task-space mass matrix.
-            Matrix6d getTaskMassMatrix(const std::string& link_name=ee_name_);
-
-            // @brief Get cached task-space Coriolis force.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space Coriolis vector.
-            Vector6d getTaskCoriolis(const std::string& link_name=ee_name_);
-
-            // @brief Get cached task-space gravity force.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space gravity vector.
-            Vector6d getTaskGravity(const std::string& link_name=ee_name_);
-
-            // @brief Get cached task-space nonlinear effects.
-            // @param link_name Link name (default: end-effector).
-            // @return 6D task-space nonlinear effects vector.
-            Vector6d getTaskNonlinearEffects(const std::string& link_name=ee_name_);
+            
 
         private:
             // @brief Internal function to update forward kinematics.
@@ -207,9 +160,8 @@ namespace FR3Controller
             std::vector<std::string> joint_names_;
 
             // Joint space state
-            VectorXd q_;    // joint angle
-            VectorXd qdot_; // joint velocity
-            VectorXd tau_ext_;  // joint torque
+            VectorXd q_;       // joint angle
+            VectorXd qdot_;    // joint velocity
 
             // Task space state
             static constexpr const char* ee_name_ = "fr3_link8"; // end-effector link name

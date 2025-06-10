@@ -7,37 +7,28 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 def generate_launch_description():
     sim_node = Node(
-        package='mujoco_ros_sim',
-        executable='mujoco_ros_sim',
-        name='mujoco_sim_node',
-        output='screen',
-        parameters=[
-            {'robot_name': 'franka_fr3_torque'},
-            {'controller_class': 'dyros_robot_controller.fr3_controller.controller.FR3Controller'},
-        ],
-        remappings=[
-            ('fr3_controller/joint_states', '/joint_states')
-        ],
-        # prefix=(
-        #     'xterm -hold -e '
-        #     'gdb -q '
-        #     '-ex "set breakpoint pending on" '
-        #     '-ex "set follow-fork-mode child" '
-        #     '-ex "handle SIGUSR1 noprint nostop pass" '
-        #     '-ex "run" --args python3'
-        # ),
-    )
+    package='mujoco_ros_sim',
+    executable='mujoco_ros_sim',
+    name='mujoco_sim_node',
+    output='screen',
+    parameters=[
+        {'robot_name': 'fr3_husky'},
+        {'controller_class': 'dyros_robot_controller.husky_fr3_controller.controller.HuskyFR3Controller'},
+    ],
+    remappings=[
+        ("husky_fr3_controller/joint_states", "/joint_states")
+    ],
+)
 
     urdf_path = os.path.join(
-        get_package_share_directory('dyros_robot_controller'),
-        'robot', 
-        'fr3.urdf')
-    moveit_config_path = get_package_share_directory('fr3_moveit_config')
+        get_package_share_directory('husky_fr3_description'),
+        'urdf', 'husky_fr3.urdf')
+    moveit_config_path = get_package_share_directory('husky_fr3_moveit_config')
     moveit_config = (
-        MoveItConfigsBuilder("fr3")
+        MoveItConfigsBuilder("husky_fr3")
         .robot_description(file_path=urdf_path)
         .robot_description_semantic(
-            file_path=os.path.join(moveit_config_path, "config", "fr3.srdf"))
+            file_path=os.path.join(moveit_config_path, "config", "husky_fr3.srdf"))
         .planning_scene_monitor(
             publish_robot_description=True,
             publish_robot_description_semantic=True
@@ -47,7 +38,7 @@ def generate_launch_description():
     rviz_config_file = os.path.join(
         get_package_share_directory("dyros_robot_controller"),
         "launch", 
-        "fr3_rviz.rviz"
+        "husky_fr3_rviz.rviz"
     )
 
     robot_state_publisher = Node(
@@ -83,8 +74,8 @@ def generate_launch_description():
 
     gui_node = Node(
         package='dyros_robot_controller',
-        executable='FR3ControllerQT',
-        name='FR3ControllerQT',
+        executable='HuskyFR3ControllerQT',
+        name='HuskyFR3ControllerQT',
         output='screen',
         emulate_tty=True,
     )
@@ -93,6 +84,6 @@ def generate_launch_description():
         sim_node,
         robot_state_publisher,
         joint_state_publisher,
-        rviz_node,
+        # rviz_node,
         gui_node,
     ])

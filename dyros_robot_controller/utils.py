@@ -54,6 +54,53 @@ def cubic_spline(
         # Return the value of the cubic polynomial at time t.
         return a0 + a1*t + a2*(t**2) + a3*(t**3)
 
+def cubic_dot_spline(
+    time: float,
+    time_0: float,
+    time_f: float,
+    x_0: np.ndarray,
+    x_f: np.ndarray,
+    x_dot_0: np.ndarray,
+    x_dot_f: np.ndarray
+) -> np.ndarray:
+    """
+    Computes the derivative of a cubic spline interpolation for a given time within an interval.
+
+    This function computes the derivative of the cubic spline interpolation defined in cubic_spline()
+    for a given time within the specified interval. It returns the derivative at the given time.
+
+    Parameters:
+        time (float): The current time at which to evaluate the derivative.
+        time_0 (float): The starting time of the interpolation interval.
+        time_f (float): The ending time of the interpolation interval.
+        x_0 (np.ndarray): The starting value (state) at time_0.
+        x_f (np.ndarray): The ending value (state) at time_f.
+        x_dot_0 (np.ndarray): The derivative (velocity) at time_0.
+        x_dot_f (np.ndarray): The derivative (velocity) at time_f.
+
+    Returns:
+        np.ndarray: The derivative of the interpolated state at the given time.
+    """
+    # If current time is before the start time, return the initial derivative.
+    if time < time_0:
+        return x_dot_0
+    # If current time is after the final time, return the final derivative.
+    elif time > time_f:
+        return x_dot_f
+    else:
+        # Total duration of the interpolation interval.
+        T = time_f - time_0
+        # Elapsed time from the start.
+        t = time - time_0
+        # Coefficients for the cubic polynomial derivatives:
+        # b0: initial derivative
+        b0 = x_dot_0
+        # b1: second coefficient computed from boundary conditions
+        b1 = 2*(3*(x_f - x_0) - T*(2*x_dot_0 + x_dot_f)) / (T**2)
+        # b2: third coefficient computed from boundary conditions
+        b2 = 3*(x_f - x_0) - T*(x_dot_0 + x_dot_f)
+        # Return the value of the cubic polynomial derivative at time t.
+        return b0 + b1*t + b2*(t**2)
 
 class ControlledThread(threading.Thread):
     """
@@ -122,3 +169,9 @@ class ControlledThread(threading.Thread):
         # If more than one thread was affected, revert the exception injection.
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), None)
+
+def LowPassFilter(input, prev_res, sampling_freq, cutoff_freq):
+        rc = 1. / (cutoff_freq * 2 * np.pi)
+        dt = 1. / sampling_freq
+        a = dt / (rc + dt)
+        return prev_res + a * (input - prev_res)
