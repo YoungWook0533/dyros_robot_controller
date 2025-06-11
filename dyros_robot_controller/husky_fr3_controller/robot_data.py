@@ -87,11 +87,11 @@ class HuskyFR3RobotData():
                     pos_dict: dict, 
                     vel_dict: dict, 
                     tau_ext_dict: dict, 
-                    current_sensors:dict):
-        self.q_virtual[:2] = LowPassFilter(current_sensors["position_sensor"][:2], self.q_virtual[:2], 1000, 10)
-        self.q_virtual[2] = R.from_quat(current_sensors["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2]
-        self.qdot_virtual[:2] = current_sensors["linear_velocity_sensor"][:2]
-        self.qdot_virtual[2] = current_sensors["angular_velocity_sensor"][2]
+                    sensor_dict:dict):
+        self.q_virtual[:2] = LowPassFilter(sensor_dict["position_sensor"][:2], self.q_virtual[:2], 1000, 10)
+        self.q_virtual[2] = R.from_quat(sensor_dict["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2]
+        self.qdot_virtual[:2] = sensor_dict["linear_velocity_sensor"][:2]
+        self.qdot_virtual[2] = sensor_dict["angular_velocity_sensor"][2]
         self.q_virtual_tmp = np.concatenate([self.q_virtual[:2], 
                                              np.array([np.cos(self.q_virtual[2]),
                                                        np.sin(self.q_virtual[2])])]) # (x, y, cos(yaw), sin(yaw))

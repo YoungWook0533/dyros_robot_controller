@@ -131,7 +131,7 @@ class XLSController(ControllerInterface):
                     pos_dict: dict, 
                     vel_dict: dict, 
                     tau_ext_dict: dict,
-                    current_sensors: dict, 
+                    sensor_dict: dict, 
                     current_time: float) -> None:
         
         self.current_time = current_time
@@ -141,18 +141,18 @@ class XLSController(ControllerInterface):
         self.wheel_vel[2] = vel_dict['rear_right_wheel_rolling_joint']
         self.wheel_vel[3] = vel_dict['rear_left_wheel_rolling_joint']
         
-        self.base_pose[:2] = current_sensors['position_sensor'][:2]  # [x, y]
-        self.base_pose[2] = R.from_quat(current_sensors["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2] # theta
+        self.base_pose[:2] = sensor_dict['position_sensor'][:2]  # [x, y]
+        self.base_pose[2] = R.from_quat(sensor_dict["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2] # theta
         
         ### By FK
         self.base_vel = self.FK(self.wheel_vel)
         
         ### By sensor
-        # tmp_base_vel = current_sensors['linear_velocity_sensor'][:2] # wrt world frame
+        # tmp_base_vel = sensor_dict['linear_velocity_sensor'][:2] # wrt world frame
         # tmp_base_vel = np.array([[np.cos(self.base_pose[2]), -np.sin(self.base_pose[2])],
         #                          [np.sin(self.base_pose[2]),  np.cos(self.base_pose[2])]]).dot(tmp_base_vel) # Convert to base frame
         # self.base_vel[:2] = tmp_base_vel[:2]
-        # self.base_vel[2] = current_sensors['angular_velocity_sensor'][2]
+        # self.base_vel[2] = sensor_dict['angular_velocity_sensor'][2]
         
     def compute(self) -> None:
         if self.is_mode_changed:

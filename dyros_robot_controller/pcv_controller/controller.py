@@ -96,7 +96,7 @@ class PCVController(ControllerInterface):
                     pos_dict: dict, 
                     vel_dict: dict, 
                     tau_ext_dict: dict,
-                    current_sensors: dict, 
+                    sensor_dict: dict, 
                     current_time: float) -> None:
         
         self.current_time = current_time
@@ -115,18 +115,18 @@ class PCVController(ControllerInterface):
         self.steer_wheel_pos[2] = pos_dict['rear_right_steer']
         self.steer_wheel_pos[3] = pos_dict['rear_left_steer']
         
-        self.base_pose[:2] = current_sensors['position_sensor'][:2]  # [x, y]
-        self.base_pose[2] = R.from_quat(current_sensors["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2] # theta
+        self.base_pose[:2] = sensor_dict['position_sensor'][:2]  # [x, y]
+        self.base_pose[2] = R.from_quat(sensor_dict["orientation_sensor"], scalar_first=True).as_euler('zyx', degrees=False)[2] # theta
         
         ### By FK
         # self.base_vel = self.FK(self.wheel_vel, self.steer_wheel_vel)
         
         ### By sensor
-        tmp_base_vel = current_sensors['linear_velocity_sensor'][:2] # wrt world frame
+        tmp_base_vel = sensor_dict['linear_velocity_sensor'][:2] # wrt world frame
         tmp_base_vel = np.array([[np.cos(self.base_pose[2]), -np.sin(self.base_pose[2])],
                                  [np.sin(self.base_pose[2]),  np.cos(self.base_pose[2])]]).dot(tmp_base_vel) # Convert to base frame
         self.base_vel[:2] = tmp_base_vel[:2]
-        self.base_vel[2] = current_sensors['angular_velocity_sensor'][2]
+        self.base_vel[2] = sensor_dict['angular_velocity_sensor'][2]
         
     def compute(self) -> None:
         if self.is_mode_changed:
@@ -185,10 +185,10 @@ class PCVController(ControllerInterface):
         """
         # A Powered-Caster Holonomic Robotic Vehicle for Mobile Manipulation Tasks
 
-        W = 0.2045*2  # Distance between right and left wheels
-        H = 0.2225*2  # Distance between front and rear wheels
-        R = 0.120     # Radius of wheels
-        b = 0.020     # Distance of offset between the wheel center and the caster point
+        W = 0.125*2.0  # Distance between right and left wheels
+        H = 0.215*2.0  # Distance between front and rear wheels
+        R = 0.055      # Radius of wheels
+        b = 0.020      # Distance of offset between the wheel center and the caster point
         base_vel_lim = np.array([1.5, 2.0])  # [linear_vel, angular_vel]
         base_acc_lim = np.array([1.0, 1.0])  # [linear_acc, angular_acc]
         
@@ -258,9 +258,7 @@ class PCVController(ControllerInterface):
         self.base_pose_desired[:2] = posi[:2]  # [x, y]
         self.base_pose_desired[2] = R.from_quat(quat, scalar_first=True).as_euler('zyx', degrees=False)[2]  # theta
         
-    def targetVelocityCallback(self, msg: Twist):
-        self.node.get_logger().info(f"[PCVController] Target velocity received: {msg}")
-        
+    def targetVelocityCallback(self, msg: Twist):        
         # Convert the Twist message to a 2D velocity vector
         linear_vel_x = msg.linear.x
         linear_vel_y = msg.linear.y

@@ -109,6 +109,10 @@ install(DIRECTORY launch/
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
+install(DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
 install(
   PROGRAMS
     dyros_robot_controller/fr3_controller/ros2_qt_gui.py
@@ -142,6 +146,13 @@ install(
     dyros_robot_controller/pcv_controller/ros2_qt_gui.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME PCVControllerQT
+)
+
+install(
+  PROGRAMS
+    dyros_robot_controller/ur5e_controller/ros2_qt_gui.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME UR5eControllerQT
 )
 
 ament_package()

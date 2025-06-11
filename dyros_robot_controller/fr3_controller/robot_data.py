@@ -40,7 +40,7 @@ class FR3RobotData():
                     pos_dict: dict, 
                     vel_dict: dict, 
                     tau_ext_dict: dict, 
-                    current_sensors:dict):
+                    sensor_dict:dict):
         for rd_joint_name in self.rd_joint_names:
             rd_index = self.rd_joint_names.index(rd_joint_name)
             

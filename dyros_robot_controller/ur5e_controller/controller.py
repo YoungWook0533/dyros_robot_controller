@@ -9,83 +9,80 @@ import time
 from dyros_robot_controller.utils import cubic_spline, cubic_dot_spline
 
 from mujoco_ros_sim import ControllerInterface
-from .robot_data import FR3RobotData
 
-from dyros_robot_controller_wrapper_cpp import FR3Controller as Controllercpp
+from .robot_data import UR5eRobotData
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32
 from geometry_msgs.msg import Pose
-from sensor_msgs.msg import JointState
 
 from srmt2.planning_scene import PlanningScene
 from srmt2.planner.rrt_connect import SuhanRRTConnect
 from srmt2.kinematics import TRACIK
 
 """
-FR3 MuJoCo Joint/Sensor Imformation
+UR5e MuJoCo Joint/Sensor Imformation
  id | name                 | type   | nq | nv | idx_q | idx_v
 ----+----------------------+--------+----+----+-------+------
-  0 | fr3_joint1           | _Hinge |  1 |  1 |     0 |    0
-  1 | fr3_joint2           | _Hinge |  1 |  1 |     1 |    1
-  2 | fr3_joint3           | _Hinge |  1 |  1 |     2 |    2
-  3 | fr3_joint4           | _Hinge |  1 |  1 |     3 |    3
-  4 | fr3_joint5           | _Hinge |  1 |  1 |     4 |    4
-  5 | fr3_joint6           | _Hinge |  1 |  1 |     5 |    5
-  6 | fr3_joint7           | _Hinge |  1 |  1 |     6 |    6
+  0 | shoulder_pan_joint   | _Hinge |  1 |  1 |     0 |    0
+  1 | shoulder_lift_joint  | _Hinge |  1 |  1 |     1 |    1
+  2 | elbow_joint          | _Hinge |  1 |  1 |     2 |    2
+  3 | wrist_1_joint        | _Hinge |  1 |  1 |     3 |    3
+  4 | wrist_2_joint        | _Hinge |  1 |  1 |     4 |    4
+  5 | wrist_3_joint        | _Hinge |  1 |  1 |     5 |    5
 
  id | name                 | trn     | target_joint
 ----+----------------------+---------+-------------
-  0 | fr3_joint1           | _Joint  | fr3_joint1
-  1 | fr3_joint2           | _Joint  | fr3_joint2
-  2 | fr3_joint3           | _Joint  | fr3_joint3
-  3 | fr3_joint4           | _Joint  | fr3_joint4
-  4 | fr3_joint5           | _Joint  | fr3_joint5
-  5 | fr3_joint6           | _Joint  | fr3_joint6
-  6 | fr3_joint7           | _Joint  | fr3_joint7
+  0 | shoulder_pan         | _Joint  | shoulder_pan_joint
+  1 | shoulder_lift        | _Joint  | shoulder_lift_joint
+  2 | elbow                | _Joint  | elbow_joint
+  3 | wrist_1              | _Joint  | wrist_1_joint
+  4 | wrist_2              | _Joint  | wrist_2_joint
+  5 | wrist_3              | _Joint  | wrist_3_joint
 
  id | name                        | type             | dim | adr | target (obj)
 ----+-----------------------------+------------------+-----+-----+----------------
+
 """
-class FR3Controller(ControllerInterface):
+class UR5eController(ControllerInterface):
     
     def __init__(self, node: Node, dt: float, mj_joint_dict: list):
         super().__init__(node, dt, mj_joint_dict)
         
-        self.robot_data = FR3RobotData(self.node, mj_joint_dict["joint_names"])
-        
-        self.key_sub = self.node.create_subscription(Int32, 'fr3_controller/mode_input', self.keyCallback, 10)
-        self.target_pose_sub = self.node.create_subscription(Pose, 'fr3_controller/target_pose', self.targetPoseCallback, 10)
-        
-        self.EEpose_pub = self.node.create_publisher(Pose, 'fr3_controller/ee_pose', 10)
-        
+        self.robot_data = UR5eRobotData(self.node, mj_joint_dict["joint_names"])
+
+        self.key_sub = self.node.create_subscription(Int32, 'ur5e_controller/mode_input', self.keyCallback, 10)
+        self.target_pose_sub = self.node.create_subscription(Pose, 'ur5e_controller/target_pose', self.targetPoseCallback, 10)
+
+        self.EEpose_pub = self.node.create_publisher(Pose, 'ur5e_controller/ee_pose', 10)
+
         urdf_path = os.path.join(
             get_package_share_directory('dyros_robot_controller'),
             'robot',
-            'fr3.urdf'
+            'ur5e.urdf'
         )
         srdf_path = os.path.join(
-            get_package_share_directory('fr3_moveit_config'),
+            get_package_share_directory('ur5e_moveit_config'),
             'config',
-            'fr3.srdf'
+            'ur5e_robot.srdf'
         )
-        self.pc = PlanningScene(arm_names=["fr3_arm"], 
-                                arm_dofs=[self.robot_data.dof], 
-                                base_link="fr3_link0", 
-                                node_name="fr3_PlanningScene",
-                                topic_name="/fr3_planning_scene",
+        self.pc = PlanningScene(arm_names=["ur5e_arm"], 
+                                arm_dofs=[6], 
+                                base_link="base_link", 
+                                node_name="ur5e_PlanningScene",
+                                topic_name="/ur5e_planning_scene",
                                 urdf_file_path=urdf_path,
                                 srdf_file_path=srdf_path,)
         
-        self.tracIK = TRACIK(base_link="fr3_link0", 
-                             tip_link="fr3_link8", 
+        self.tracIK = TRACIK(base_link="base_link", 
+                             tip_link="flange", 
                              urdf_file_path=urdf_path)
         
         self.joint_upper_limit = self.tracIK.get_upper_bound()
         self.joint_lower_limit = self.tracIK.get_lower_bound()
         
-        self.rrt_planner = SuhanRRTConnect(state_dim=self.robot_data.dof, 
+        self.rrt_planner = SuhanRRTConnect(state_dim=6, 
                                            lb=self.joint_lower_limit, 
                                            ub=self.joint_upper_limit, 
                                            validity_fn=self.pc.is_valid)
@@ -100,7 +97,6 @@ class FR3Controller(ControllerInterface):
         self.q_init = self.q
         self.q_desired = self.q_init
         self.target_pose = self.robot_data.getPose()
-        self.torque_desired = self.tau_ext
         
         self.is_target_pose_changed = False
         self.is_rrt_path_found = False
@@ -121,7 +117,6 @@ class FR3Controller(ControllerInterface):
         
         self.q = self.robot_data.q
         self.qdot = self.robot_data.qdot
-        self.tau_ext = self.robot_data.tau_ext
         
         self.pc.display(self.q)
         
@@ -137,34 +132,31 @@ class FR3Controller(ControllerInterface):
             
         # Compute desired joint positions based on the current control mode.
         if self.mode == 'init':
-            target_q = np.array([0, 0, 0, 0, 0, 0, np.pi/4])
+            target_q = np.array([0, 0, 0, 0, 0, 0])
             self.q_desired = cubic_spline(
                 self.current_time,              # Current time
                 self.control_start_time,        # Start time of control
                 self.control_start_time + 2.0,  # End time of interpolation (2 seconds later)
                 self.q_init,                    # Initial joint positions
                 target_q,                       # Target joint positions
-                np.zeros(7),                    # Initial velocity (assumed zero)
-                np.zeros(7)                     # Final velocity (assumed zero)
+                np.zeros(6),                    # Initial velocity (assumed zero)
+                np.zeros(6)                     # Final velocity (assumed zero)
             )
-            self.torque_desired = self.PDControl(self.q_desired, np.zeros(7), 1000, 100)
         elif self.mode == 'home':
-            target_q = np.array([0, 0, 0, -np.pi/2, 0, np.pi/2, np.pi/4])
+            target_q = np.array([-1.5708, -1.5708, 1.5708, -1.5708, -1.5708, 0])
             self.q_desired = cubic_spline(
                 self.current_time,              # Current time
                 self.control_start_time,        # Start time of control
                 self.control_start_time + 2.0,  # End time of interpolation (2 seconds later)
                 self.q_init,                    # Initial joint positions
                 target_q,                       # Target joint positions
-                np.zeros(7),                    # Initial velocity (assumed zero)
-                np.zeros(7)                     # Final velocity (assumed zero)
+                np.zeros(6),                    # Initial velocity (assumed zero)
+                np.zeros(6)                     # Final velocity (assumed zero)
             )
-            self.torque_desired = self.PDControl(self.q_desired, np.zeros(7), 1000, 100)
         elif self.mode == 'RRTmove':
-            self.torque_desired = self.PDControl(self.q_desired, self.qdot_desired, 1000, 100)
-                    
+            self.q_desired = self.q_desired
         else:
-            self.torque_desired = np.zeros(7)
+            self.q_desired = self.q_init
             
     def computeSlow(self) -> None:
         while rclpy.ok():
@@ -180,7 +172,7 @@ class FR3Controller(ControllerInterface):
                         self.node.get_logger().info("Attempting to solve IK...")
                         is_ik_found, q_goal = self.tracIK.solve(pos=self.target_pose[0:3,3],
                                                     quat=R.from_matrix(self.target_pose[0:3,0:3]).as_quat(), 
-                                                    q_init=self.q_init)
+                                                    q_init=self.q)
                         if is_ik_found:
                             self.node.get_logger().info(f"IK solution found:\n{q_goal}")
                             if self.pc.is_valid(q_goal):
@@ -194,7 +186,7 @@ class FR3Controller(ControllerInterface):
                             
                     if is_ik_found:
                         self.rrt_planner.max_distance = 0.1
-                        self.rrt_planner.set_start(self.q_init)
+                        self.rrt_planner.set_start(self.q)
                         self.rrt_planner.set_goal(q_goal)
                         for _ in range(10):
                             self.node.get_logger().info("Attempting to find RRT path...")
@@ -229,12 +221,13 @@ class FR3Controller(ControllerInterface):
     def getCtrlInput(self) -> dict:
         ctrl_dict = {}
         for i, joint_name in enumerate(self.robot_data.rd_joint_names):
-            ctrl_dict[joint_name] = self.torque_desired[i]
+            joint_name = joint_name.replace('_joint', '')  # Replace 'joint' with 'trn' in the joint name
+            ctrl_dict[joint_name] = self.q_desired[i]
         return ctrl_dict
     
     # =============================================================================================
     def keyCallback(self, msg: Int32):
-        self.node.get_logger().info(f"[FR3Controller] Key input received: {msg.data}")
+        self.node.get_logger().info(f"[UR5eController] Key input received: {msg.data}")
         if msg.data == 1:
             self.setMode('init')
         elif msg.data == 2:
@@ -244,17 +237,11 @@ class FR3Controller(ControllerInterface):
                     
     def setMode(self, mode: str):
         self.is_mode_changed = True
-        self.node.get_logger().info(f"[FR3Controller] Mode changed: {mode}")
+        self.node.get_logger().info(f"[UR5eController] Mode changed: {mode}")
         self.mode = mode
-     
-    def PDControl(self, q_desired:np.ndarray, qdot_desired:np.ndarray, kp:float, kd:float) -> np.ndarray:
-        q_error = q_desired - self.q
-        qdot_error = qdot_desired - self.qdot
-        tau = self.robot_data.getMassMatrix() @ (kp * q_error + kd * qdot_error) + self.robot_data.getCoriolis()
-        return tau
     
     def targetPoseCallback(self, msg: Pose):
-        self.node.get_logger().info(f"[FR3Controller] Target pose received: {msg}")
+        self.node.get_logger().info(f"[UR5eController] Target pose received: {msg}")
         self.is_target_pose_changed = True
         # Convert the Pose message to a 4x4 transformation matrix
         quat = [msg.orientation.x,

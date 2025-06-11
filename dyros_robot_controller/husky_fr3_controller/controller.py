@@ -86,10 +86,10 @@ class HuskyFR3Controller(ControllerInterface):
                     pos_dict: dict, 
                     vel_dict: dict, 
                     tau_ext_dict: dict, 
-                    current_sensors: dict, 
+                    sensor_dict: dict, 
                     current_time: float) -> None:
         self.current_time = current_time
-        self.robot_data.updateState(pos_dict, vel_dict, tau_ext_dict, current_sensors)
+        self.robot_data.updateState(pos_dict, vel_dict, tau_ext_dict, sensor_dict)
         self.controller.updateState(self.current_time)
                         
     def compute(self) -> None:
