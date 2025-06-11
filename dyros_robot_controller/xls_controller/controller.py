@@ -102,7 +102,6 @@ class XLSController(ControllerInterface):
         
         self.base_pose_pub = self.node.create_publisher(Pose, 'xls_controller/base_pose', 10)
         self.base_vel_pub = self.node.create_publisher(Twist, 'xls_controller/base_vel', 10)
-        self.joint_state_pub = self.node.create_publisher(JointState, 'xls_controller/joint_states', 10)
         
         self.base_vel = np.zeros(3)          # [vx, vy, w] wrt base frame
         self.base_vel_desired = np.zeros(3)  # [vx, vy, w] wrt base frame
@@ -115,9 +114,7 @@ class XLSController(ControllerInterface):
         self.wheel_vel = np.zeros(4)          # [front_right, front_left, rear_right, rear_left]
         self.wheel_vel_desired = np.zeros(4)  # [front_right, front_left, rear_right, rear_left]
         self.wheel_vel_init = np.zeros(4)     # [front_right, front_left, rear_right, rear_left]
-        
-        self.thread = threading.Thread(target=lambda: rclpy.spin(self.node), daemon=True)
-       
+               
     def starting(self) -> None:
         self.is_mode_changed = False
         self.mode = 'stop'
@@ -129,10 +126,7 @@ class XLSController(ControllerInterface):
         
         self.node.create_timer(0.01, self.pubBasePoseCallback)
         self.node.create_timer(0.01, self.pubBaseVelCallback)
-        self.node.create_timer(0.01, self.pubJointStateCallback)
-        
-        self.thread.start()
-        
+                
     def updateState(self, 
                     pos_dict: dict, 
                     vel_dict: dict, 
@@ -277,7 +271,6 @@ class XLSController(ControllerInterface):
         Returns:
             np.ndarray: control input for the wheels [w_front_right, w_front_left, w_rear_right, w_rear_left]
         """
-        self.node.get_logger().info(f"[XLSController] VelocityDControl: target_vel={target_vel}, current_vel={current_vel}")
         control_input = kd * (target_vel - current_vel)
         return control_input
 
@@ -303,15 +296,7 @@ class XLSController(ControllerInterface):
         angular_vel = msg.angular.z
 
         self.base_vel_desired = np.array([linear_vel_x, linear_vel_y, angular_vel])
-
-    def pubJointStateCallback(self):
-        # Publish joint states
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.node.get_clock().now().to_msg()
-        joint_state_msg.name = ["front_right_wheel", "front_left_wheel", "rear_right_wheel", "rear_left_wheel"]
-        joint_state_msg.velocity = self.wheel_vel.tolist()
-        self.joint_state_pub.publish(joint_state_msg)
-        
+    
     def pubBasePoseCallback(self):
         # Publish base pose
         base_pose_msg = Pose()

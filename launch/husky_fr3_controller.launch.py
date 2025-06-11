@@ -15,9 +15,6 @@ def generate_launch_description():
         {'robot_name': 'fr3_husky'},
         {'controller_class': 'dyros_robot_controller.husky_fr3_controller.controller.HuskyFR3Controller'},
     ],
-    remappings=[
-        ("husky_fr3_controller/joint_states", "/joint_states")
-    ],
 )
 
     urdf_path = os.path.join(

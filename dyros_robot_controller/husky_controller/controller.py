@@ -52,7 +52,6 @@ class HuskyController(ControllerInterface):
         
         self.base_pose_pub = self.node.create_publisher(Pose, 'husky_controller/base_pose', 10)
         self.base_vel_pub = self.node.create_publisher(Twist, 'husky_controller/base_vel', 10)
-        self.joint_state_pub = self.node.create_publisher(JointState, 'husky_controller/joint_states', 10)
         
         self.base_vel = np.zeros(2)          # [v, w] wrt base frame
         self.base_vel_desired = np.zeros(2)  # [v, w] wrt base frame
@@ -65,9 +64,7 @@ class HuskyController(ControllerInterface):
         self.wheel_vel = np.zeros(2)          # [w_left, w_right]
         self.wheel_vel_desired = np.zeros(2)  # [w_left, w_right]
         self.wheel_vel_init = np.zeros(2)     # [w_left, w_right]
-        
-        self.thread = threading.Thread(target=lambda: rclpy.spin(self.node), daemon=True)
-       
+               
     def starting(self) -> None:
         self.is_mode_changed = False
         self.mode = 'stop'
@@ -79,10 +76,7 @@ class HuskyController(ControllerInterface):
         
         self.node.create_timer(0.01, self.pubBasePoseCallback)
         self.node.create_timer(0.01, self.pubBaseVelCallback)
-        self.node.create_timer(0.01, self.pubJointStateCallback)
-        
-        self.thread.start()
-        
+                
     def updateState(self, 
                     pos_dict: dict, 
                     vel_dict: dict, 
@@ -217,14 +211,6 @@ class HuskyController(ControllerInterface):
         angular_vel = msg.angular.z
         
         self.base_vel_desired = np.array([linear_vel, angular_vel])
-        
-    def pubJointStateCallback(self):
-        # Publish joint states
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.node.get_clock().now().to_msg()
-        joint_state_msg.name = ["front_left_wheel", "front_right_wheel", "rear_left_wheel", "rear_right_wheel"]
-        joint_state_msg.velocity = np.concatenate([self.wheel_vel_desired, self.wheel_vel_desired]).tolist()
-        self.joint_state_pub.publish(joint_state_msg)
         
     def pubBasePoseCallback(self):
         # Publish base pose

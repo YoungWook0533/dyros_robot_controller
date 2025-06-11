@@ -58,7 +58,6 @@ class FR3Controller(ControllerInterface):
         self.key_sub = self.node.create_subscription(Int32, 'fr3_controller/mode_input', self.keyCallback, 10)
         self.target_pose_sub = self.node.create_subscription(Pose, 'fr3_controller/target_pose', self.targetPoseCallback, 10)
         
-        self.jointstate_pub = self.node.create_publisher(JointState, 'fr3_controller/joint_states', 10)
         self.EEpose_pub = self.node.create_publisher(Pose, 'fr3_controller/ee_pose', 10)
         
         urdf_path = os.path.join(
@@ -91,7 +90,6 @@ class FR3Controller(ControllerInterface):
                                            ub=self.joint_upper_limit, 
                                            validity_fn=self.pc.is_valid)
         
-        self.thread = threading.Thread(target=lambda: rclpy.spin(self.node), daemon=True)
         self.compute_slow_thread = threading.Thread(target=self.computeSlow)
        
     def starting(self) -> None:
@@ -107,10 +105,8 @@ class FR3Controller(ControllerInterface):
         self.is_target_pose_changed = False
         self.is_rrt_path_found = False
         
-        self.node.create_timer(0.01, self.pub_jointstate_callback)
         self.node.create_timer(0.01, self.pub_EEpose_callback)
         
-        self.thread.start()
         self.compute_slow_thread.start()
         
     def updateState(self, 
@@ -273,16 +269,6 @@ class FR3Controller(ControllerInterface):
                     msg.position.z]
         
         self.target_pose = T
-        
-    def pub_jointstate_callback(self):
-        # Publish joint states
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.node.get_clock().now().to_msg()
-        joint_state_msg.name = [str(n) for n in self.robot_data.rd_joint_names]
-        joint_state_msg.position = self.q.tolist()
-        joint_state_msg.velocity = self.qdot.tolist()
-        joint_state_msg.effort = self.torque_desired.tolist()
-        self.jointstate_pub.publish(joint_state_msg)
         
     def pub_EEpose_callback(self):
         # Publish end-effector pose

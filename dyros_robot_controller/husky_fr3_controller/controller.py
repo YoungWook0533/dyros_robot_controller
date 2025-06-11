@@ -67,7 +67,6 @@ class HuskyFR3Controller(ControllerInterface):
         self.key_sub = self.node.create_subscription(Int32, 'husky_fr3_controller/mode_input', self.keyCallback, 10)
         self.target_pose_sub = self.node.create_subscription(Pose, 'husky_fr3_controller/target_pose', self.targetPoseCallback, 10)
         
-        self.jointstate_pub = self.node.create_publisher(JointState, 'husky_fr3_controller/joint_states', 10)
         self.EEpose_pub = self.node.create_publisher(Pose, 'husky_fr3_controller/ee_pose', 10)
         
         urdf_path = os.path.join(
@@ -76,14 +75,11 @@ class HuskyFR3Controller(ControllerInterface):
             'husky_fr3.urdf'
         )
                 
-        self.thread = threading.Thread(target=lambda: rclpy.spin(self.node), daemon=True)
         self.compute_slow_thread = threading.Thread(target=self.computeSlow)
         
     def starting(self) -> None:
-        self.node.create_timer(0.01, self.pub_jointstate_callback)
         self.node.create_timer(0.01, self.pub_EEpose_callback)
         
-        self.thread.start()
         self.compute_slow_thread.start()
         
     def updateState(self, 
@@ -143,20 +139,6 @@ class HuskyFR3Controller(ControllerInterface):
                     msg.position.z]
         
         self.target_pose = T
-        
-        
-    def pub_jointstate_callback(self):
-        # Publish joint states
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.node.get_clock().now().to_msg()
-        joint_state_msg.name = [str(n) for n in self.mj_joint_dict["joint_names"][1:]] # except for free joint
-        joint_state_msg.position = np.concatenate([self.robot_data.q_mobile,
-                                                   self.robot_data.q_mobile,
-                                                   self.robot_data.q_mani]).tolist()
-        joint_state_msg.velocity = np.concatenate([self.robot_data.qdot_mobile,
-                                                   self.robot_data.qdot_mobile,
-                                                   self.robot_data.qdot_mani]).tolist()
-        self.jointstate_pub.publish(joint_state_msg)
         
     def pub_EEpose_callback(self):
         # Publish end-effector pose

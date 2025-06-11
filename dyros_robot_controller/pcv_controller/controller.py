@@ -62,7 +62,6 @@ class PCVController(ControllerInterface):
         
         self.base_pose_pub = self.node.create_publisher(Pose, 'pcv_controller/base_pose', 10)
         self.base_vel_pub = self.node.create_publisher(Twist, 'pcv_controller/base_vel', 10)
-        self.joint_state_pub = self.node.create_publisher(JointState, 'pcv_controller/joint_states', 10)
         
         self.base_vel = np.zeros(3)          # [vx, vy, w] wrt base frame
         self.base_vel_desired = np.zeros(3)  # [vx, vy, w] wrt base frame
@@ -79,9 +78,6 @@ class PCVController(ControllerInterface):
                                            #  rear_left_steer,   rear_left_rotate]
         self.wheel_vel_desired = np.zeros(8)
         self.wheel_vel_init = np.zeros(8)
-
-        
-        self.thread = threading.Thread(target=lambda: rclpy.spin(self.node), daemon=True)
        
     def starting(self) -> None:
         self.is_mode_changed = False
@@ -94,9 +90,7 @@ class PCVController(ControllerInterface):
         
         self.node.create_timer(0.01, self.pubBasePoseCallback)
         self.node.create_timer(0.01, self.pubBaseVelCallback)
-        self.node.create_timer(0.01, self.pubJointStateCallback)
         
-        self.thread.start()
         
     def updateState(self, 
                     pos_dict: dict, 
@@ -273,21 +267,6 @@ class PCVController(ControllerInterface):
         angular_vel = msg.angular.z
 
         self.base_vel_desired = np.array([linear_vel_x, linear_vel_y, angular_vel])
-
-    def pubJointStateCallback(self):
-        # Publish joint states
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.node.get_clock().now().to_msg()
-        joint_state_msg.name = ["front_right_steer"
-                               ,"front_right_rotate"
-                               ,"front_left_steer"
-                               ,"front_left_rotate"
-                               ,"rear_right_steer"
-                               ,"rear_right_rotate"
-                               ,"rear_left_steer"
-                               ,"rear_left_rotate"]
-        joint_state_msg.velocity = self.wheel_vel.tolist()
-        self.joint_state_pub.publish(joint_state_msg)
         
     def pubBasePoseCallback(self):
         # Publish base pose

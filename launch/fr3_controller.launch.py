@@ -15,9 +15,6 @@ def generate_launch_description():
             {'robot_name': 'franka_fr3_torque'},
             {'controller_class': 'dyros_robot_controller.fr3_controller.controller.FR3Controller'},
         ],
-        remappings=[
-            ('fr3_controller/joint_states', '/joint_states')
-        ],
         # prefix=(
         #     'xterm -hold -e '
         #     'gdb -q '

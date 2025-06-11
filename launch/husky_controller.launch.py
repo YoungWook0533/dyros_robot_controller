@@ -14,9 +14,6 @@ def generate_launch_description():
             {'robot_name': 'husky'},
             {'controller_class': 'dyros_robot_controller.husky_controller.controller.HuskyController'},
         ],
-        remappings=[
-            ('husky_controller/joint_states', '/joint_states')
-        ],
         # prefix=(
         #     'xterm -hold -e '
         #     'gdb -q '

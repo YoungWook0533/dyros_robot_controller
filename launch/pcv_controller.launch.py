@@ -14,9 +14,6 @@ def generate_launch_description():
             {'robot_name': 'dyros_pcv'},
             {'controller_class': 'dyros_robot_controller.pcv_controller.controller.PCVController'},
         ],
-        remappings=[
-            ('pcv_controller/joint_states', '/joint_states')
-        ],
         # prefix=(
         #     'xterm -hold -e '
         #     'gdb -q '

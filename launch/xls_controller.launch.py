@@ -14,9 +14,6 @@ def generate_launch_description():
             {'robot_name': 'summit_xls'},
             {'controller_class': 'dyros_robot_controller.xls_controller.controller.XLSController'},
         ],
-        remappings=[
-            ('xls_controller/joint_states', '/joint_states')
-        ],
         # prefix=(
         #     'xterm -hold -e '
         #     'gdb -q '
