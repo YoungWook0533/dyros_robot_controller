@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 import threading
 import time
 
-from dyros_robot_controller.utils import cubic_spline, cubic_dot_spline
+from dyros_robot_controller.utils import cubic_spline, cubic_dot_spline, rotation_cubic, rotation_cubic_dot, get_phi
 
 from mujoco_ros_sim import ControllerInterface
 from .robot_data import FR3RobotData
@@ -102,6 +102,12 @@ class FR3Controller(ControllerInterface):
         self.target_pose = self.robot_data.getPose()
         self.torque_desired = self.tau_ext
         
+        self.x_init = self.x
+        self.target_pose = self.x_init
+        self.x_desired = self.x_init
+        self.xdot_init = self.xdot
+        self.xdot_desired = np.zeros(6)
+        
         self.is_target_pose_changed = False
         self.is_rrt_path_found = False
         
@@ -122,6 +128,8 @@ class FR3Controller(ControllerInterface):
         self.q = self.robot_data.q
         self.qdot = self.robot_data.qdot
         self.tau_ext = self.robot_data.tau_ext
+        self.x = self.robot_data.getPose()
+        self.xdot = self.robot_data.getVelocity()
         
         self.pc.display(self.q)
         
@@ -132,6 +140,11 @@ class FR3Controller(ControllerInterface):
             self.qdot_init = self.robot_data.qdot
             self.q_desired = self.q_init
             self.qdot_desired = np.zeros(7)
+            self.x_init = self.x
+            self.x_desired = self.x_init
+            self.xdot_init = self.xdot
+            self.xdot_desired = np.zeros(6)
+            self.target_pose = self.x_init
             self.control_start_time = self.current_time
             self.is_mode_changed = False
             
@@ -162,7 +175,9 @@ class FR3Controller(ControllerInterface):
             self.torque_desired = self.PDControl(self.q_desired, np.zeros(7), 1000, 100)
         elif self.mode == 'RRTmove':
             self.torque_desired = self.PDControl(self.q_desired, self.qdot_desired, 1000, 100)
-                    
+        elif self.mode == 'CLIK':
+            self.q_desired = self.CLIK(self.target_pose, duration=2.0)
+            self.torque_desired = self.PDControl(self.q_desired, self.qdot_desired, 1000, 100)
         else:
             self.torque_desired = np.zeros(7)
             
@@ -180,7 +195,7 @@ class FR3Controller(ControllerInterface):
                         self.node.get_logger().info("Attempting to solve IK...")
                         is_ik_found, q_goal = self.tracIK.solve(pos=self.target_pose[0:3,3],
                                                     quat=R.from_matrix(self.target_pose[0:3,0:3]).as_quat(), 
-                                                    q_init=self.q_init)
+                                                    q_init=self.q)
                         if is_ik_found:
                             self.node.get_logger().info(f"IK solution found:\n{q_goal}")
                             if self.pc.is_valid(q_goal):
@@ -194,7 +209,7 @@ class FR3Controller(ControllerInterface):
                             
                     if is_ik_found:
                         self.rrt_planner.max_distance = 0.1
-                        self.rrt_planner.set_start(self.q_init)
+                        self.rrt_planner.set_start(self.q)
                         self.rrt_planner.set_goal(q_goal)
                         for _ in range(10):
                             self.node.get_logger().info("Attempting to find RRT path...")
@@ -241,11 +256,68 @@ class FR3Controller(ControllerInterface):
             self.setMode('home')
         elif msg.data == 3:
             self.setMode('RRTmove')
+        elif msg.data == 4:
+            self.setMode('CLIK')
                     
     def setMode(self, mode: str):
         self.is_mode_changed = True
         self.node.get_logger().info(f"[FR3Controller] Mode changed: {mode}")
         self.mode = mode
+        
+    def CLIK(self, 
+             x_target: np.ndarray, 
+             duration: float = 2.0,
+             kp: np.ndarray = np.array([10, 10, 10, 10, 10, 10]),
+             kd: np.ndarray = np.array([5, 5, 5, 5, 5, 5])) -> np.ndarray:
+        
+        control_start_time = self.control_start_time
+        x_init = self.x_init
+        xdot_init = self.xdot_init
+        if self.is_target_pose_changed:
+            self.is_target_pose_changed = False
+            control_start_time = self.current_time
+            x_init = self.x
+            xdot_init = self.xdot
+        x_desired = np.eye(4)
+        xdot_desired = np.zeros(6)
+        x_desired[0:3, 3] = cubic_spline(time=self.current_time,
+                                          time_0=control_start_time,
+                                          time_f=control_start_time + duration,
+                                          x_0=x_init[0:3, 3],
+                                          x_f=x_target[0:3, 3],
+                                          x_dot_0=xdot_init[0:3],
+                                          x_dot_f=np.zeros(3))
+        x_desired[0:3, 0:3] = rotation_cubic(time=self.current_time,
+                                             time_0=control_start_time,
+                                             time_f=control_start_time + duration,
+                                             R_0=x_init[0:3, 0:3],
+                                             R_f=x_target[0:3, 0:3])
+        xdot_desired[0:3] = cubic_dot_spline(time=self.current_time,
+                                             time_0=control_start_time,
+                                             time_f=control_start_time + duration,
+                                             x_0=x_init[0:3, 3],
+                                             x_f=x_target[0:3, 3],
+                                             x_dot_0=xdot_init[0:3],
+                                             x_dot_f=np.zeros(3))
+        xdot_desired[3:6] = rotation_cubic_dot(time=self.current_time,
+                                               time_0=control_start_time,
+                                               time_f=control_start_time + duration,
+                                               R_0=x_init[0:3, 0:3],
+                                               R_f=x_target[0:3, 0:3])
+        self.x_desired = x_desired
+        self.xdot_desired = xdot_desired
+        
+        x_error = np.zeros(6)
+        x_error[0:3] = self.x_desired[0:3, 3] - self.x[0:3, 3]
+        x_error[3:6] = get_phi(self.x_desired[0:3, 0:3], self.x[0:3, 0:3])
+
+        xdot_error = self.xdot_desired - self.xdot
+
+        J = self.robot_data.getJacobian()
+        J_pinv = np.linalg.pinv(J)
+
+        self.qdot_desired = J_pinv @ (kp* (x_error) + kd * (xdot_error))
+        return self.q + self.dt * self.qdot_desired
      
     def PDControl(self, q_desired:np.ndarray, qdot_desired:np.ndarray, kp:float, kd:float) -> np.ndarray:
         q_error = q_desired - self.q
