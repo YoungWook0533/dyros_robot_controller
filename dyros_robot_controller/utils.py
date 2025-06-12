@@ -98,9 +98,175 @@ def cubic_dot_spline(
         # b1: second coefficient computed from boundary conditions
         b1 = 2*(3*(x_f - x_0) - T*(2*x_dot_0 + x_dot_f)) / (T**2)
         # b2: third coefficient computed from boundary conditions
-        b2 = 3*(x_f - x_0) - T*(x_dot_0 + x_dot_f)
+        b2 = 3*( -2*(x_f - x_0) + T*(x_dot_0 + x_dot_f) ) / (T**3)
         # Return the value of the cubic polynomial derivative at time t.
         return b0 + b1*t + b2*(t**2)
+
+def _vec_to_skew(ω: np.ndarray) -> np.ndarray:
+    """
+    Convert a 3-vector to a 3x3 skew-symmetric matrix.
+
+    Parameters
+    ----------
+    ω : (3,) ndarray
+        Axis-angle vector.
+
+    Returns
+    -------
+    (3,3) ndarray
+        Skew-symmetric matrix so that (_vec_to_skew(ω) @ v) = ω x v.
+    """
+    return np.array([[ 0.0, -ω[2],  ω[1]],
+                     [ ω[2], 0.0,  -ω[0]],
+                     [-ω[1], ω[0],  0.0]])
+
+
+def _skew_to_vec(S: np.ndarray) -> np.ndarray:
+    """
+    Inverse of _vec_to_skew.
+
+    Parameters
+    ----------
+    S : (3,3) ndarray
+        Skew-symmetric matrix
+
+    Returns
+    -------
+    (3,) ndarray
+        Corresponding vector.
+    """
+    return np.array([S[2, 1], S[0, 2], S[1, 0]])
+
+
+def so3_exp(ω: np.ndarray) -> np.ndarray:
+    """
+    Exponential map from so(3) → SO(3).
+
+    Parameters
+    ----------
+    ω : (3,) ndarray
+        Axis-angle vector.
+
+    Returns
+    -------
+    (3,3) ndarray
+        Rotation matrix R = exp([ω]x).
+    """
+    θ = np.linalg.norm(ω)
+    if θ < 1e-12:               # Small-angle approximation
+        return np.eye(3) + _vec_to_skew(ω)
+    A = np.sin(θ) / θ
+    B = (1.0 - np.cos(θ)) / θ**2
+    K = _vec_to_skew(ω)
+    return np.eye(3) + A * K + B * (K @ K)
+
+
+def so3_log(R: np.ndarray) -> np.ndarray:
+    """
+    Logarithm map SO(3) → so(3).
+
+    Parameters
+    ----------
+    R : (3,3) ndarray
+        Rotation matrix.
+
+    Returns
+    -------
+    (3,3) ndarray
+        Skew-symmetric matrix S such that exp(S) == R
+        (vector form obtainable with _skew_to_vec).
+    """
+    # Clamp trace for numerical stability
+    trace_R = np.clip(np.trace(R), -1.0, 3.0)
+    θ = np.arccos((trace_R - 1.0) / 2.0)
+    if θ < 1e-12:               # R ≈ I
+        return np.zeros((3, 3))
+    return θ / (2.0 * np.sin(θ)) * (R - R.T)
+
+def rotation_cubic(time: float, 
+                   time_0: float,  
+                   time_f: float,
+                   R_0: np.ndarray, 
+                   R_f: np.ndarray) -> np.ndarray:
+    """Kang-&-Park cubic rotation interpolation using your cubic_spline."""
+    if time <= time_0:
+        return R_0
+    if time >= time_f:
+        return R_f
+
+    # Relative rotation in the Lie algebra
+    r_skew = so3_log(R_0.T @ R_f)        # 3×3 skew
+    r_vec  = _skew_to_vec(r_skew)      # 3-vector
+
+    # Vector τ (each element goes 0 → 1)
+    tau_vec = cubic_spline(
+        time, time_0, time_f,
+        np.zeros(3), np.ones(3),
+        np.zeros(3), np.zeros(3)
+    )
+
+    # R(t) = R0 · exp([τ·r]×)
+    return R_0 @ so3_exp(r_vec * tau_vec)
+
+
+def rotation_cubic_dot(time: float, 
+                       time_0: float, 
+                       time_f: float,
+                       R_0: np.ndarray, 
+                       R_f: np.ndarray) -> np.ndarray:
+    """Angular velocity in the space frame."""
+    r_skew = so3_log(R_0.T @ R_f)
+    r_vec  = _skew_to_vec(r_skew)
+
+    # Derivative of τ · r with your cubic_dot_spline
+    rd = cubic_dot_spline(
+        time, time_0, time_f,
+        np.zeros(3), r_vec,
+        np.zeros(3), np.zeros(3)
+    )
+
+    # ω = R(t) · ṙ
+    return rotation_cubic(time, time_0, time_f, R_0, R_f) @ rd
+
+import numpy as np
+
+def get_phi(current_rotation: np.ndarray, desired_rotation: np.ndarray) -> np.ndarray:
+    """
+    Compute the orientation error vector φ between two rotation matrices.
+
+    This is the direct NumPy equivalent of the Eigen-based C++ routine:
+
+        φ = -½ ∑_{i=0}^{2} ( R_cur.col(i) x R_des.col(i) )
+
+    A small-angle controller can use ω = K φ to steer the current rotation
+    toward the desired one.
+
+    Parameters
+    ----------
+    current_rotation : (3, 3) ndarray
+        Current orientation matrix R_cur.
+    desired_rotation : (3, 3) ndarray
+        Desired orientation matrix R_des.
+
+    Returns
+    -------
+    (3,) ndarray
+        Orientation error vector φ (in the *space* frame).
+    """
+    # Basic shape check
+    if current_rotation.shape != (3, 3) or desired_rotation.shape != (3, 3):
+        raise ValueError("Both inputs must be 3x3 rotation matrices.")
+
+    # Column-wise cross products v_i × w_i for i = 0,1,2
+    # np.cross with axis=0 treats each column as a vector
+    phi = 0
+    for col in range(3):
+        phi += np.cross(current_rotation[:, col], desired_rotation[:, col])
+
+    phi *= -0.5
+
+    return phi
+
 
 class ControlledThread(threading.Thread):
     """
