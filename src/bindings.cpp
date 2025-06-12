@@ -66,6 +66,8 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_wrapper_cpp)
    
     eigenpy::enableEigenPy();
     eigenpy::enableEigenPySpecific<Eigen::Matrix<double, Eigen::Dynamic, 1>>();
+    eigenpy::enableEigenPySpecific<Eigen::Matrix<double, 6, 1>>();
+    eigenpy::enableEigenPySpecific<Eigen::Matrix<double, 6, 6>>();
     eigenpy::enableEigenPySpecific<Eigen::Matrix<double, 4, 4>>();
     eigenpy::enableEigenPySpecific<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>();
 
