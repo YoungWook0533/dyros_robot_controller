@@ -34,7 +34,7 @@ def generate_launch_description():
         MoveItConfigsBuilder("ur5e")
         .robot_description(file_path=urdf_path)
         .robot_description_semantic(
-            file_path=os.path.join(moveit_config_path, "config", "ur5e_robot.srdf"))
+            file_path=os.path.join(moveit_config_path, "config", "ur5e.srdf"))
         .planning_scene_monitor(
             publish_robot_description=True,
             publish_robot_description_semantic=True
