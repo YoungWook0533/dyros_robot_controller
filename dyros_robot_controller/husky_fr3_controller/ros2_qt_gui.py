@@ -4,7 +4,7 @@ import math
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
 
 from PyQt5.QtWidgets import (
@@ -23,9 +23,9 @@ class Ros2QtGui(Node, QWidget):
 
         # Publishers & Subscribers
         self.mode_pub = self.create_publisher(Int32, 'husky_fr3_controller/mode_input', 10)
-        self.pose_pub = self.create_publisher(Pose, 'husky_fr3_controller/target_pose', 10)
+        self.pose_pub = self.create_publisher(PoseStamped, 'husky_fr3_controller/target_pose', 10)
         self.joint_sub = self.create_subscription(JointState, '/joint_states', self.joint_state_callback, 10)
-        self.ee_sub = self.create_subscription(Pose, 'husky_fr3_controller/ee_pose', self.ee_pose_callback, 10)
+        self.ee_sub = self.create_subscription(PoseStamped, 'husky_fr3_controller/ee_pose', self.ee_pose_callback, 10)
 
         # 현재 EE Pose 저장용
         self.current_ee = {'X':0.0,'Y':0.0,'Z':0.0,'Roll':0.0,'Pitch':0.0,'Yaw':0.0}
@@ -102,11 +102,13 @@ class Ros2QtGui(Node, QWidget):
         self.mode_pub.publish(msg)
 
     def _on_publish_pose(self):
-        msg = Pose()
+        msg = PoseStamped()
         try:
-            msg.position.x = float(self.pose_inputs['px'].text())
-            msg.position.y = float(self.pose_inputs['py'].text())
-            msg.position.z = float(self.pose_inputs['pz'].text())
+            msg.header.frame_id = "world"
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.pose.position.x = float(self.pose_inputs['px'].text())
+            msg.pose.position.y = float(self.pose_inputs['py'].text())
+            msg.pose.position.z = float(self.pose_inputs['pz'].text())
             # RPY → quaternion
             roll = math.radians(float(self.pose_inputs['roll'].text()))
             pitch = math.radians(float(self.pose_inputs['pitch'].text()))
@@ -114,12 +116,12 @@ class Ros2QtGui(Node, QWidget):
             cy = math.cos(yaw*0.5); sy = math.sin(yaw*0.5)
             cp = math.cos(pitch*0.5); sp = math.sin(pitch*0.5)
             cr = math.cos(roll*0.5); sr = math.sin(roll*0.5)
-            msg.orientation.w = cr*cp*cy + sr*sp*sy
-            msg.orientation.x = sr*cp*cy - cr*sp*sy
-            msg.orientation.y = cr*sp*cy + sr*cp*sy
-            msg.orientation.z = cr*cp*sy - sr*sp*cy
+            msg.pose.orientation.w = cr*cp*cy + sr*sp*sy
+            msg.pose.orientation.x = sr*cp*cy - cr*sp*sy
+            msg.pose.orientation.y = cr*sp*cy + sr*cp*sy
+            msg.pose.orientation.z = cr*cp*sy - sr*sp*cy
         except Exception:
-            msg = Pose()
+            msg = PoseStamped()
         self.pose_pub.publish(msg)
 
     def _on_set_current(self):
@@ -136,9 +138,9 @@ class Ros2QtGui(Node, QWidget):
         for i, pos in enumerate(msg.position[:7]):
             self.joint_edits[f'fr3_joint{i+1}'].setText(f"{pos:.3f}")
 
-    def ee_pose_callback(self, msg: Pose):
+    def ee_pose_callback(self, msg: PoseStamped):
         # quaternion -> RPY
-        x,y,z,w = msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w
+        x,y,z,w = msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w
         sinr = 2*(w*x + y*z); cosr = 1-2*(x*x + y*y)
         roll = math.atan2(sinr, cosr)
         sinp = 2*(w*y - z*x)
@@ -146,7 +148,7 @@ class Ros2QtGui(Node, QWidget):
         siny = 2*(w*z + x*y); cosy = 1-2*(y*y + z*z)
         yaw = math.atan2(siny, cosy)
         # 저장 및 표시
-        vals = {'X':msg.position.x, 'Y':msg.position.y, 'Z':msg.position.z,
+        vals = {'X':msg.pose.position.x, 'Y':msg.pose.position.y, 'Z':msg.pose.position.z,
                 'Roll':roll, 'Pitch':pitch, 'Yaw':yaw}
         for key, val in vals.items():
             self.current_ee[key] = val

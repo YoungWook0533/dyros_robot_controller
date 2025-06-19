@@ -118,8 +118,7 @@ class HuskyController(ControllerInterface):
         elif self.mode == 'base_vel_tracking':
             self.wheel_vel_desired = self.IK(self.base_vel_desired)
         elif self.mode == 'base_pose_tracking':
-            # TODO: kanayama
-            pass
+            self.wheel_vel_desired = self.Kanayama(self.base_pose_desired)
         else:
             self.wheel_vel_desired = np.zeros(2)
     
@@ -152,7 +151,7 @@ class HuskyController(ControllerInterface):
         Returns:
             np.ndarray: desired wheel angular velocities [w_left, w_right]
         """
-        L = 0.2775*2  # Distance between wheels
+        L = 0.2854*2*1.875  # Distance between wheels
         R = 0.1651    # radius of wheels
         base_vel_lim = np.array([1.0, 3.0])  # [linear_vel, angular_vel]
         base_acc_lim = np.array([2.0, 6.0])  # [linear_acc, angular_acc]
@@ -184,16 +183,27 @@ class HuskyController(ControllerInterface):
             np.ndarray: base linear and angular velocity [v, w]
         """
         w_left, w_right = wheel_vel
-        L = 0.2775*2  # Distance between wheels
+        L = 0.2854*2*1.875  # Distance between wheels
         R = 0.1651  # radius of wheels
         v = (w_left + w_right) * R / 2.0
         w = (w_right - w_left) * R / L
         return np.array([v, w])
+    
+    def Kanayama(self, goal_pose: np.ndarray) -> np.ndarray:
+        pose_error = goal_pose - self.base_pose
+        pose_error = np.array([[ np.cos(self.base_pose[2]), np.sin(self.base_pose[2]), 0],
+                               [-np.sin(self.base_pose[2]), np.cos(self.base_pose[2]), 0],
+                               [0                         , 0,                         1]]) @ pose_error
+        Kx, Ky, Ke = 100, 1, 10
+        base_vel_desired = np.zeros(2)
+        base_vel_desired[0] = Kx * pose_error[0]
+        base_vel_desired[1] = Ke * np.sin(pose_error[2])
+        
+        return base_vel_desired
 
     def targetPoseCallback(self, msg: Pose):
         self.node.get_logger().info(f"[HuskyController] Target pose received: {msg}")
         
-        # Convert the Pose message to a 4x4 transformation matrix
         posi = np.array([msg.position.x, msg.position.y, msg.position.z])
         quat = [msg.orientation.x,
                 msg.orientation.y,

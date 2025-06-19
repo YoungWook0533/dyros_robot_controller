@@ -1,6 +1,4 @@
-#ifndef HUSKY_FR3_ROBOT_DATA_HPP
-#define HUSKY_FR3_ROBOT_DATA_HPP
-
+#pragma once
 #include <string>
 #include <mutex>
 #include <shared_mutex>
@@ -46,7 +44,6 @@ namespace HuskyFR3Controller
     class RobotData
     {
         public:
-            EIGEN_MAKE_ALIGNED_OPERATOR_NEW
             RobotData(const std::string& urdf_path, const bool verbose=false);
             ~RobotData();
             bool updateState(const VectorXd& q, const VectorXd& qdot);
@@ -131,9 +128,5 @@ namespace HuskyFR3Controller
             VectorXd g_actuated_;     // gravity forces
             VectorXd c_actuated_;     // centrifugal and coriolis forces
             VectorXd NLE_actuated_;   // nonlinear effects ( g_ + c_ )
-
-            mutable std::shared_mutex calculation_mutex_;
     };
 }
-
-#endif // HUSKY_FR3_ROBOT_DATA_HPP

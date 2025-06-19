@@ -100,16 +100,13 @@ namespace HuskyFR3Controller
 
     bool RobotData::updateState(const VectorXd& q, const VectorXd& qdot)
     {
-        {
-            std::unique_lock<std::shared_mutex> lock(calculation_mutex_);
-            q_ = q;
-            qdot_ = qdot;
-            q_actuated_ = q_.tail(model_.nq-4);
-            qdot_actuated_ = qdot_.tail(model_.nv-3);
+        q_ = q;
+        qdot_ = qdot;
+        q_actuated_ = q_.tail(model_.nq-4);
+        qdot_actuated_ = qdot_.tail(model_.nv-3);
 
-            if(!updateKinematics(q_, qdot_)) return false;
-            if(!updateDynamics(q_, qdot_)) return false;
-        }
+        if(!updateKinematics(q_, qdot_)) return false;
+        if(!updateDynamics(q_, qdot_)) return false;
         return true;
     }
 
@@ -209,7 +206,6 @@ namespace HuskyFR3Controller
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
             return Matrix4d::Identity();
         }
-        // std::shared_lock<std::shared_mutex> lock(calculation_mutex_);   // 다중 읽기 가능
         Matrix4d link_pose = data_.oMf[link_index].toHomogeneousMatrix();
 
         return link_pose;

@@ -13,7 +13,8 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_name': 'franka_fr3_torque'},
-            {'controller_class': 'dyros_robot_controller.fr3_controller.controller.FR3Controller'},
+            # {'controller_class': 'dyros_robot_controller.fr3_controller.controller.FR3Controller'},
+            {'controller_class': 'mujoco_ros_sim.FR3Controller'},
         ],
         # prefix=(
         #     'xterm -hold -e '
@@ -25,9 +26,13 @@ def generate_launch_description():
         # ),
     )
 
+    # urdf_path = os.path.join(
+    #     get_package_share_directory('dyros_robot_controller'),
+    #     'robot', 
+    #     'fr3.urdf')
     urdf_path = os.path.join(
-        get_package_share_directory('dyros_robot_controller'),
-        'robot', 
+        get_package_share_directory('fr3_moveit_config'),
+        'config', 
         'fr3.urdf')
     moveit_config_path = get_package_share_directory('fr3_moveit_config')
     moveit_config = (

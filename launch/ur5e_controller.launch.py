@@ -13,7 +13,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_name': 'universal_robots_ur5e'},
-            {'controller_class': 'dyros_robot_controller.ur5e_controller.controller.UR5eController'},
+            {'controller_class': 'dyros_robot_controller.UR5eController'},
         ],
         # prefix=(
         #     'xterm -hold -e '

@@ -41,7 +41,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_name': robot_name_cfg},
-            {'controller_class': 'dyros_robot_controller.pcv_controller.controller.PCVController'},
+            {'controller_class': 'dyros_robot_controller.PCVController'},
         ],
         # prefix=(
         #     'xterm -hold -e '

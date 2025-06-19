@@ -13,7 +13,7 @@ def generate_launch_description():
     output='screen',
     parameters=[
         {'robot_name': 'fr3_husky'},
-        {'controller_class': 'dyros_robot_controller.husky_fr3_controller.controller.HuskyFR3Controller'},
+        {'controller_class': 'mujoco_ros_sim.HuskyFR3Controller'},
     ],
 )
 

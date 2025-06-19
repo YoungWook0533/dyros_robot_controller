@@ -41,7 +41,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_name': robot_name_cfg},
-            {'controller_class': 'dyros_robot_controller.xls_controller.controller.XLSController'},
+            {'controller_class': 'dyros_robot_controller.XLSController'},
         ],
     )
     
