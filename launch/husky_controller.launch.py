@@ -42,8 +42,6 @@ def generate_launch_description():
         parameters=[
             {'robot_name': robot_name_cfg},
             {'controller_class': 'dyros_robot_controller.HuskyController'},
-            # {'controller_class': 'husky_controller.HuskyController'},
-            # {'controller_class': 'dyros_robot_controller.husky_controller.HuskyController'},
         ],
         # prefix=(
         #     'xterm -hold -e '

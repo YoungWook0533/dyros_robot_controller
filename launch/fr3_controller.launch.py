@@ -13,8 +13,7 @@ def generate_launch_description():
         output='screen',
         parameters=[
             {'robot_name': 'franka_fr3_torque'},
-            # {'controller_class': 'dyros_robot_controller.fr3_controller.controller.FR3Controller'},
-            {'controller_class': 'mujoco_ros_sim.FR3Controller'},
+            {'controller_class': 'dyros_robot_controller.FR3Controller'},
         ],
         # prefix=(
         #     'xterm -hold -e '
