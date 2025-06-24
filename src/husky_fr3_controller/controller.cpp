@@ -16,8 +16,14 @@ namespace HuskyFR3Controller
         target_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
                             "husky_fr3_controller/target_pose", 10,
                             std::bind(&Controller::subtargetPoseCallback, this, std::placeholders::_1));
+        base_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
+                            "husky_fr3_controller/cmd_vel", 10,
+                            std::bind(&Controller::subtargetBaseVelCallback, this, std::placeholders::_1));
         ee_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
                         "husky_fr3_controller/ee_pose", 10);
+        
+        base_vel_.setZero();
+        base_vel_desired_.setZero();
 
         q_virtual_.setZero();
         q_virtual_tmp_.setZero();
@@ -63,6 +69,8 @@ namespace HuskyFR3Controller
         mode_ = "home";
         control_start_time_ = current_time_;
 
+        base_vel_desired_= base_vel_;
+
         q_virtual_init_ = q_virtual_;
         qdot_virtual_init_ = qdot_virtual_;
         q_virtual_desired_.setZero();
@@ -101,12 +109,14 @@ namespace HuskyFR3Controller
                       sensors_dict.at("orientation_sensor")(1),
                       sensors_dict.at("orientation_sensor")(2),
                       sensors_dict.at("orientation_sensor")(3));
-        Vector3d euler_zyx = q.toRotationMatrix().eulerAngles(2, 1, 0);
-        q_virtual_(2) = euler_zyx(0);
-        q_virtual_tmp_ << q_virtual_(0), q_virtual_(1), cos(q_virtual_(2)), sin(q_virtual_(2));
+        Vector3d euler_rpy = DyrosMath::rot2Euler(q.toRotationMatrix());
+        q_virtual_(2) = euler_rpy(2);
 
         qdot_virtual_.head(2) = sensors_dict.at("linear_velocity_sensor").head(2);
         qdot_virtual_(2) = sensors_dict.at("angular_velocity_sensor")(2);
+
+        base_vel_(0) = cos(q_virtual_(2)) * qdot_virtual_(0) + sin(q_virtual_(2)) * qdot_virtual_(1);
+        base_vel_(1) = qdot_virtual_(2);
 
         for(size_t i=0; i<7; i++)
         {
@@ -118,9 +128,9 @@ namespace HuskyFR3Controller
         qdot_mobile_(0) = vel_dict.at("front_left_wheel")(0);
         qdot_mobile_(1) = vel_dict.at("front_right_wheel")(0);
 
-        Vector13d q_tmp;
+        Vector12d q_tmp;
         Vector12d qdot_tmp;
-        q_tmp << q_virtual_tmp_, q_mani_, q_mobile_;
+        q_tmp << q_virtual_, q_mani_, q_mobile_;
         qdot_tmp << qdot_virtual_, qdot_mani_, qdot_mobile_;
         if(!robot_->updateState(q_tmp, qdot_tmp))
         {
@@ -136,6 +146,8 @@ namespace HuskyFR3Controller
         {
             is_mode_changed_ = false;
             control_start_time_ = current_time_;
+
+            base_vel_desired_.setZero();
             
             q_virtual_init_ = q_virtual_;
             qdot_virtual_init_ = qdot_virtual_;
@@ -195,18 +207,24 @@ namespace HuskyFR3Controller
             x_error.tail(3) = DyrosMath::getPhi(target_x.rotation(), x_.rotation());
 
             Vector6d Kp, Kv;
-            Kp << 1,1,1,1,1,1;;
-            Kv << 1,1,1,0,0,0;;
+            Kp << 400,400,400,1,1,1;;
+            Kv << 40,40,40,0,0,0;;
 
             Vector6d f = Kp.asDiagonal() * x_error - Kv.asDiagonal() * xdot_;
             MatrixXd J_tilda = robot_->getJacobianActuated();
-            VectorXd etadot = (J_tilda.transpose() * J_tilda).inverse() * J_tilda.transpose() * (f);
-            VectorXd tmp_torque_desired = robot_->getMassMatrixActuated() * etadot + robot_->getGravityActuated();
+            
+            MatrixXd M_x = (J_tilda * robot_->getMassMatrixActuated().inverse() * J_tilda.transpose() ).inverse();
 
-            torque_mani_desired_ = tmp_torque_desired.head(7);
-            qdot_mobile_desired_ += etadot.tail(2) * dt_;
-            // qdot_mobile_desired_ = MobileAdmControl(tmp_torque_desired.tail(2));
+            VectorXd tmp_torque = J_tilda.transpose() * (M_x * f) + robot_->getGravityActuated();
 
+            torque_mani_desired_ = tmp_torque.head(7);
+            qdot_mobile_desired_ = MobileAdmControl(tmp_torque.tail(2));
+
+        }
+        else if(mode_ == "base_vel_tracking")
+        {
+            torque_mani_desired_ = ManiPDControl(q_mani_desired_, qdot_mani_desired_);
+            qdot_mobile_desired_ = MobileIK(base_vel_desired_);
         }
         else
         {
@@ -233,15 +251,16 @@ namespace HuskyFR3Controller
     {
       is_mode_changed_ = true;
       mode_ = mode;
-      RCLCPP_INFO(node_->get_logger(), "[HuskyFR3Controller] Mode changed: %s", mode.c_str());
+      RCLCPP_INFO(node_->get_logger(), "\033[34m Mode changed: %s\033[0m", mode.c_str());
     }
 
     void Controller::keyCallback(const std_msgs::msg::Int32::SharedPtr msg)
     {
-      RCLCPP_INFO(node_->get_logger(), "[HuskyFR3Controller] Key input received: %d", msg->data);
+      RCLCPP_INFO(node_->get_logger(), "Key input received: %d", msg->data);
       if(msg->data == 1)      setMode("home");
       else if(msg->data == 2) setMode("wholebody_grav_comp");
       else if(msg->data == 3) setMode("wholebody_impedence");
+      else if(msg->data == 4) setMode("base_vel_tracking");
       else                    setMode("none");
   
     }
@@ -249,7 +268,7 @@ namespace HuskyFR3Controller
     void Controller::subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
     {
       RCLCPP_INFO(node_->get_logger(),
-              "[HuskyFR3Controller] Target pose received: position=(%.3f, %.3f, %.3f), "
+              " Target pose received: position=(%.3f, %.3f, %.3f), "
               "orientation=(%.3f, %.3f, %.3f, %.3f)",
               msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
               msg->pose.orientation.x, msg->pose.orientation.y,
@@ -268,6 +287,16 @@ namespace HuskyFR3Controller
       x_goal_.translation() << msg->pose.position.x,
                                msg->pose.position.y,
                                msg->pose.position.z;
+    }
+
+    void Controller::subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
+    {
+        RCLCPP_INFO(node_->get_logger(),
+              " Target Base vel received: linear = %.3f, angular = %.3f",
+              msg->linear.x, msg->angular.z);
+
+        base_vel_desired_(0) = msg->linear.x;
+        base_vel_desired_(1) = msg->angular.z;
     }
 
     void Controller::pubEEPoseCallback()
@@ -310,6 +339,24 @@ namespace HuskyFR3Controller
         VectorXd omega = qdot_mobile_ + alpha * dt_;
 
         return omega;
+    }
+
+    VectorXd Controller::MobileIK(const VectorXd& desired_base_vel)
+    {
+        const double L = 0.2775*2*1.875; // Distance between wheels
+        const double R = 0.1651;         // Radius of wheels
+        Vector2d base_vel_lim, base_acc_lim; // 
+        base_vel_lim << 1.0, 3.0; // [linear (m/s), angular (rad/s)]
+        base_acc_lim << 2.0, 6.0; // [linear (m/s^2), angular (rad/s^2)]min
+
+        double desired_v = std::min(std::max(desired_base_vel(0), -base_vel_lim(0)), base_vel_lim(0));
+        double desired_w = std::min(std::max(desired_base_vel(1), -base_vel_lim(1)), base_vel_lim(1));
+        
+        Vector2d desired_wheel_vel;
+        desired_wheel_vel(0) = (desired_v - L/2 * desired_w) / R; // left
+        desired_wheel_vel(1) = (desired_v + L/2 * desired_w) / R; // right
+
+        return desired_wheel_vel;
     }
 
     /* register with the global registry */

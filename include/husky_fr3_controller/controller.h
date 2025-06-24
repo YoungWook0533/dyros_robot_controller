@@ -7,9 +7,11 @@
 #include <std_msgs/msg/int32.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <geometry_msgs/msg/twist.hpp>
 
 #include <thread>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <rcutils/logging_macros.h>
 
 #include "math_type_define.h"
 #include "suhan_benchmark.h"
@@ -82,6 +84,7 @@ namespace HuskyFR3Controller
         void setMode(const std::string& mode);
         void keyCallback(const std_msgs::msg::Int32::SharedPtr);
         void subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr);
+        void subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr);
         void pubEEPoseCallback();
         void computeSlowLoop();
 
@@ -90,12 +93,13 @@ namespace HuskyFR3Controller
         // ====================================================================================
         VectorXd ManiPDControl(const VectorXd& q_mani_desired, const VectorXd& qdot_mani_desired);
         VectorXd MobileAdmControl(const VectorXd& torque_mobile_desired);
-
+        VectorXd MobileIK(const VectorXd& desired_base_vel);
 
     private :
         std::unique_ptr<RobotData> robot_;
         rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr            key_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr target_pose_sub_;
+        rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr       base_vel_sub_;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr    ee_pose_pub_;
         
         rclcpp::TimerBase::SharedPtr ee_pose_pub_timer_;
@@ -109,6 +113,9 @@ namespace HuskyFR3Controller
         std::string mode_{"home"};
         double control_start_time_;
         double current_time_;
+
+        Vector2d base_vel_; // [lin, ang]
+        Vector2d base_vel_desired_;
         
         //// joint space state
         Vector3d q_virtual_;

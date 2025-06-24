@@ -1,4 +1,6 @@
 from launch import LaunchDescription
+from launch import actions, substitutions
+from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -6,6 +8,25 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 
 def generate_launch_description():
+    config_file = os.path.join(
+        get_package_share_directory("dyros_robot_controller"),
+        "config",
+        "teleop_twist_joy.yaml"
+    )
+    
+    declare_args = [
+        actions.DeclareLaunchArgument('joy_vel',
+            default_value=TextSubstitution(text='cmd_vel')),
+        actions.DeclareLaunchArgument('publish_stamped_twist',
+            default_value=TextSubstitution(text='false')),
+        actions.DeclareLaunchArgument('joy_dev',
+            default_value=TextSubstitution(text='0')),
+        actions.DeclareLaunchArgument('config_filepath',
+            default_value=TextSubstitution(text=config_file)),
+        actions.DeclareLaunchArgument('robot_name',
+            default_value=TextSubstitution(text='husky')),
+    ]
+    
     sim_node = Node(
     package='mujoco_ros_sim',
     executable='mujoco_ros_sim',
@@ -76,6 +97,33 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
     )
+    
+    joy_node = Node(
+        package='joy',
+        executable='joy_node',
+        name='joy_node',
+        output='screen',
+        parameters=[{
+            'device_id': 0,
+            'deadzone': 0.3,
+            'autorepeat_rate': 20.0,
+        }],
+    )
+    
+    teleop_twist_joy_node = Node(
+        package='teleop_twist_joy',
+        executable='teleop_node',
+        name='teleop_twist_joy_node',
+        output='screen',
+        parameters=[
+            config_file,
+            {'publish_stamped_twist': False},
+        ],
+        remappings=[
+            # ('cmd_vel', joy_vel),
+            ('cmd_vel', '/husky_fr3_controller/cmd_vel'),
+        ],
+    )
 
     return LaunchDescription([
         sim_node,
@@ -83,4 +131,6 @@ def generate_launch_description():
         joint_state_publisher,
         # rviz_node,
         gui_node,
+        joy_node,
+        teleop_twist_joy_node,
     ])

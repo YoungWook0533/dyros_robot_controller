@@ -50,6 +50,7 @@ namespace HuskyFR3Controller
             std::vector<std::string> getJointNames(){return joint_names_;}
 
             Matrix4d computePose(const VectorXd& q, const std::string& link_name=ee_name_);
+            MatrixXd computeSelectionMatrix(const VectorXd& q);
             MatrixXd computeJacobian(const VectorXd& q, const std::string& link_name=ee_name_);
             MatrixXd computeJacobianActuated(const VectorXd& q, const std::string& link_name=ee_name_);
             MatrixXd computeJacobianTimeVariation(const VectorXd& q, const VectorXd& qdot, const std::string& link_name=ee_name_);
@@ -62,12 +63,13 @@ namespace HuskyFR3Controller
             VectorXd computeNonlinearEffectsActuated(const VectorXd& q, const VectorXd& qdot);
             VectorXd computeGravity(const VectorXd& q);
             VectorXd computeGravityActuated(const VectorXd& q);
-
+            
             VectorXd getJointPosition(){return q_;}
             VectorXd getJointVelocity(){return qdot_;}
             VectorXd getJointPositionActuated(){return q_actuated_;}
             VectorXd getJointVelocityActuated(){return qdot_actuated_;}
             Matrix4d getPose(const std::string& link_name=ee_name_);
+            MatrixXd getSelectionMatrix(){return S_;}
             MatrixXd getJacobian(const std::string& link_name=ee_name_);
             MatrixXd getJacobianActuated(const std::string& link_name=ee_name_);
             MatrixXd getJacobianTimeVariation(const std::string& link_name=ee_name_);
@@ -93,7 +95,7 @@ namespace HuskyFR3Controller
             MatrixXd S_;
             const double wheel_radius_ = 0.1651;
             const double mobile_width_ = 0.2775*2.;
-            const double mobile2mani_x = 0.2;
+            const double mobile2mani_x = 0.256;
             const double mobile2mani_y = 0.;
             MatrixXd J_tmp_; // (left_wheel_vel, right_wheel_vel) -> (b_xdot_mani, b_ydot_mani, b_yawdot_mani) 
 

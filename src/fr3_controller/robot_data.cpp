@@ -175,7 +175,7 @@ namespace FR3Controller
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
             return MatrixXd::Zero(6, model_.nv);
         }
-        MatrixXd J = pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::WORLD);
+        MatrixXd J = pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
 
         return J;
     }
@@ -195,7 +195,7 @@ namespace FR3Controller
         Jdot.setZero(6, model_.nv);
         pinocchio::Data tmp_data;
         pinocchio::computeJointJacobiansTimeVariation(model_, tmp_data, q, qdot_);
-        pinocchio::getFrameJacobianTimeVariation(model_, tmp_data, link_index, pinocchio::ReferenceFrame::WORLD, Jdot);
+        pinocchio::getFrameJacobianTimeVariation(model_, tmp_data, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot);
 
         return Jdot;
     }
@@ -210,7 +210,7 @@ namespace FR3Controller
         }
         MatrixXd Jdot;
         Jdot.setZero(6, model_.nv);
-        pinocchio::getFrameJacobianTimeVariation(model_, data_, link_index, pinocchio::ReferenceFrame::WORLD, Jdot);
+        pinocchio::getFrameJacobianTimeVariation(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot);
 
         return Jdot;
     }

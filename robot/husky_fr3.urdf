@@ -1,6 +1,29 @@
 <?xml version="1.0" ?>
 <robot name="husky_fr3">
-
+  <link name="v_x_link" />
+  <joint name="v_x_joint" type="prismatic">
+    <origin rpy="0 0 0" xyz="0 0 -0.13228"/>
+      <parent link="v_x_link"/>
+      <child link="v_y_link"/>
+      <axis xyz= "1 0 0"/>
+      <limit effort="1000.0" lower="-10000.0" upper="-10000.0" velocity="10000.0"/>
+  </joint>
+  <link name="v_y_link" />
+  <joint name="v_y_joint" type="prismatic">
+    <origin rpy="0 0 0" xyz="0 0 -0.13228"/>
+      <parent link="v_y_link"/>
+      <child link="v_t_link"/>
+      <axis xyz= "0 1 0"/>
+      <limit effort="1000.0" lower="-10000.0" upper="-10000.0" velocity="10000.0"/>
+  </joint>
+  <link name="v_t_link" />
+  <joint name="v_t_joint" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 -0.13228"/>
+      <parent link="v_t_link"/>
+      <child link="base_link"/>
+      <axis rpy="0 0 0" xyz="0 0 1"/>
+      <limit effort="1000.0" lower="-6.24" upper="6.24" velocity="10000.0"/>
+  </joint>
   <!-- Mobile Base -->
   <link name="base_link">
     <collision>
