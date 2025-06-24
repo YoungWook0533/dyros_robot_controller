@@ -1,0 +1,394 @@
+#include "xls_fr3_controller/controller.h"
+
+namespace XLSFR3Controller
+{
+    Controller::Controller(const rclcpp::Node::SharedPtr& node, double dt, JointDict jd)
+    : ControllerInterface(node, dt, std::move(jd))
+    {
+        std::string urdf_path = ament_index_cpp::get_package_share_directory("dyros_robot_controller")
+                                + "/robot/xls_fr3.urdf";
+        robot_ = std::make_unique<RobotData>(urdf_path, true);
+        rd_joint_names_ = robot_->getJointNames();
+
+        key_sub_ = node_->create_subscription<std_msgs::msg::Int32>(
+                    "xls_fr3_controller/mode_input", 10,
+                    std::bind(&Controller::keyCallback, this, std::placeholders::_1));
+        target_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+                            "xls_fr3_controller/target_pose", 10,
+                            std::bind(&Controller::subtargetPoseCallback, this, std::placeholders::_1));
+        base_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
+                            "xls_fr3_controller/cmd_vel", 10,
+                            std::bind(&Controller::subtargetBaseVelCallback, this, std::placeholders::_1));
+        ee_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
+                        "xls_fr3_controller/ee_pose", 10);
+        
+        base_vel_.setZero();
+        base_vel_desired_.setZero();
+
+        q_virtual_.setZero();
+        q_virtual_tmp_.setZero();
+        q_virtual_init_.setZero();
+        q_virtual_desired_.setZero();
+        qdot_virtual_.setZero();
+        qdot_virtual_init_.setZero();
+        qdot_virtual_desired_.setZero();
+        
+        q_mani_.setZero();
+        q_mani_init_.setZero();
+        q_mani_desired_.setZero();
+        qdot_mani_.setZero();
+        qdot_mani_init_.setZero();
+        qdot_mani_desired_.setZero();
+        
+        q_mobile_.setZero();
+        q_mobile_init_.setZero();
+        q_mobile_desired_.setZero();
+        qdot_mobile_.setZero();
+        qdot_mobile_init_.setZero();
+        qdot_mobile_desired_.setZero();
+        
+        x_.setIdentity();
+        x_init_.setIdentity();
+        x_desired_.setIdentity();
+        xdot_.setZero();
+        xdot_init_.setZero();
+        xdot_desired_.setZero();
+        
+        torque_mani_desired_.setZero();
+        qdot_mobile_desired_.setZero();
+    }
+
+    Controller::~Controller()
+    {
+
+    }
+
+    void Controller::starting()
+    {
+        is_mode_changed_ = false;
+        mode_ = "home";
+        control_start_time_ = current_time_;
+
+        base_vel_desired_= base_vel_;
+
+        q_virtual_init_ = q_virtual_;
+        qdot_virtual_init_ = qdot_virtual_;
+        q_virtual_desired_.setZero();
+
+        q_mani_init_ = q_mani_;
+        qdot_mani_init_ = qdot_mani_;
+        qdot_mani_desired_.setZero();
+
+        q_mobile_init_ = q_mobile_;
+        qdot_mobile_init_ = qdot_mobile_;
+        qdot_mobile_desired_.setZero();
+
+        x_init_ = x_;
+        x_desired_ = x_init_;
+        x_goal_ = x_init_;
+
+        xdot_init_ = xdot_;
+        xdot_desired_.setZero();
+
+        ee_pose_pub_timer_ = node_->create_wall_timer(
+                           std::chrono::milliseconds(100),
+                           std::bind(&Controller::pubEEPoseCallback, this)
+                           );
+    }
+
+    void Controller::updateState(const VecMap& pos_dict, 
+                                 const VecMap& vel_dict,
+                                 const VecMap& tau_ext_dict, 
+                                 const VecMap& sensors_dict, 
+                                 double current_time)
+    {
+        current_time_ = current_time;
+
+        q_virtual_.head(2) = sensors_dict.at("position_sensor").head(2);
+        Quaterniond q(sensors_dict.at("orientation_sensor")(0),
+                      sensors_dict.at("orientation_sensor")(1),
+                      sensors_dict.at("orientation_sensor")(2),
+                      sensors_dict.at("orientation_sensor")(3));
+        Vector3d euler_rpy = DyrosMath::rot2Euler(q.toRotationMatrix());
+        q_virtual_(2) = euler_rpy(2);
+
+        qdot_virtual_.head(2) = sensors_dict.at("linear_velocity_sensor").head(2);
+        qdot_virtual_(2) = sensors_dict.at("angular_velocity_sensor")(2);
+
+        Matrix2d rot_base2world;
+        rot_base2world << cos(q_virtual_(2)), sin(q_virtual_(2)),
+                         -sin(q_virtual_(2)), cos(q_virtual_(2));
+        base_vel_.head(2) = rot_base2world * qdot_virtual_.head(2);
+        base_vel_(2) = qdot_virtual_(2);
+
+        for(size_t i=0; i<7; i++)
+        {
+            const std::string& name = "fr3_joint" + std::to_string(i+1);
+            q_mani_(i) = pos_dict.at(name)(0);
+            qdot_mani_(i) = vel_dict.at(name)(0);
+        }
+
+        qdot_mobile_(0) = vel_dict.at("front_left_wheel_rolling_joint")(0);
+        qdot_mobile_(1) = vel_dict.at("front_right_wheel_rolling_joint")(0);
+        qdot_mobile_(2) = vel_dict.at("rear_left_wheel_rolling_joint")(0);
+        qdot_mobile_(3) = vel_dict.at("rear_right_wheel_rolling_joint")(0);
+
+
+        Vector14d q_tmp;
+        Vector14d qdot_tmp;
+        q_tmp << q_virtual_, q_mani_, q_mobile_;
+        qdot_tmp << qdot_virtual_, qdot_mani_, qdot_mobile_;
+        if(!robot_->updateState(q_tmp, qdot_tmp))
+        {
+            RCLCPP_ERROR(node_->get_logger(), "[XLSFR3RobotData] Failed to update robot state.");
+        }
+        x_.matrix() = robot_->getPose();
+        xdot_ = robot_->getVelocity();
+    }
+    
+    void Controller::compute()
+    {
+        if(is_mode_changed_)
+        {
+            is_mode_changed_ = false;
+            control_start_time_ = current_time_;
+
+            base_vel_desired_.setZero();
+            
+            q_virtual_init_ = q_virtual_;
+            qdot_virtual_init_ = qdot_virtual_;
+            qdot_virtual_desired_.setZero();
+            
+            q_mani_init_ = q_mani_;
+            qdot_mani_init_ = qdot_mani_;
+            qdot_mani_desired_.setZero();
+            
+            q_mobile_init_ = q_mobile_;
+            qdot_mobile_init_ = qdot_mobile_;
+            qdot_mobile_desired_.setZero();
+            
+            x_init_ = x_;
+            x_desired_ = x_init_;
+            x_goal_ = x_init_;
+            
+            xdot_init_ = xdot_;
+            xdot_desired_.setZero();
+        }
+        
+        if(mode_ == "home")
+        {
+            Vector7d q_mani_target;
+            q_mani_target << 0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4;
+            
+            
+            q_mani_desired_ = DyrosMath::cubicVector<7>(current_time_,
+                                                        control_start_time_,
+                                                        control_start_time_ + 2.0,
+                                                        q_mani_init_,
+                                                        q_mani_target,
+                                                        qdot_mani_init_,
+                                                        VectorXd::Zero(7));
+            qdot_mani_desired_ = DyrosMath::cubicDotVector<7>(current_time_,
+                                                              control_start_time_,
+                                                              control_start_time_ + 2.0,
+                                                              q_mani_init_,
+                                                              q_mani_target,
+                                                              qdot_mani_init_,
+                                                              VectorXd::Zero(7));
+                                                              
+            torque_mani_desired_ = ManiPDControl(q_mani_desired_, qdot_mani_desired_);
+            qdot_mobile_desired_.setZero();
+        }
+        else if(mode_ == "wholebody_grav_comp")
+        {
+            auto tmp_torque_desired = robot_->getGravityActuated();
+            torque_mani_desired_ = tmp_torque_desired.head(7); 
+            qdot_mobile_desired_ = MobileAdmControl(tmp_torque_desired.tail(4));
+        }
+        else if(mode_ == "wholebody_impedence")
+        {
+            Affine3d target_x = x_goal_;
+            Vector6d x_error;
+            x_error.head(3) = target_x.translation() - x_.translation();
+            x_error.tail(3) = DyrosMath::getPhi(target_x.rotation(), x_.rotation());
+
+            Vector6d Kp, Kv;
+            Kp << 400,400,400,1,1,1;;
+            Kv << 40,40,40,0,0,0;;
+
+            Vector6d f = Kp.asDiagonal() * x_error - Kv.asDiagonal() * xdot_;
+            MatrixXd J_tilda = robot_->getJacobianActuated();
+            
+            MatrixXd M_x = (J_tilda * robot_->getMassMatrixActuated().inverse() * J_tilda.transpose() ).inverse();
+
+            VectorXd tmp_torque = J_tilda.transpose() * (M_x * f) + robot_->getGravityActuated();
+
+            torque_mani_desired_ = tmp_torque.head(7);
+            qdot_mobile_desired_ = MobileAdmControl(tmp_torque.tail(4));
+        }
+        else if(mode_ == "base_vel_tracking")
+        {
+            torque_mani_desired_ = ManiPDControl(q_mani_desired_, qdot_mani_desired_);
+            qdot_mobile_desired_ = MobileIK(base_vel_desired_);
+        }
+        else
+        {
+            torque_mani_desired_ = (robot_->getGravityActuated()).head(7);
+            qdot_mobile_desired_.setZero();
+        }
+    }
+
+    CtrlInputMap Controller::getCtrlInput() const
+    {
+        CtrlInputMap ctrl_dict;
+        ctrl_dict["front_left_wheel"]  = qdot_mobile_desired_(0);
+        ctrl_dict["front_right_wheel"] = qdot_mobile_desired_(1);
+        ctrl_dict["rear_left_wheel"]   = qdot_mobile_desired_(2);
+        ctrl_dict["rear_right_wheel"]  = qdot_mobile_desired_(3);
+        for(size_t i=0; i<7; i++)
+        {
+            const std::string name = "fr3_joint" + std::to_string(i+1);
+            ctrl_dict[name] = torque_mani_desired_(i);
+        }
+
+        return ctrl_dict;
+    }
+
+    void Controller::setMode(const std::string& mode)
+    {
+      is_mode_changed_ = true;
+      mode_ = mode;
+      RCLCPP_INFO(node_->get_logger(), "\033[34m Mode changed: %s\033[0m", mode.c_str());
+    }
+
+    void Controller::keyCallback(const std_msgs::msg::Int32::SharedPtr msg)
+    {
+      RCLCPP_INFO(node_->get_logger(), "Key input received: %d", msg->data);
+      if(msg->data == 1)      setMode("home");
+      else if(msg->data == 2) setMode("wholebody_grav_comp");
+      else if(msg->data == 3) setMode("wholebody_impedence");
+      else if(msg->data == 4) setMode("base_vel_tracking");
+      else                    setMode("none");
+  
+    }
+
+    void Controller::subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+    {
+      RCLCPP_INFO(node_->get_logger(),
+              " Target pose received: position=(%.3f, %.3f, %.3f), "
+              "orientation=(%.3f, %.3f, %.3f, %.3f)",
+              msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
+              msg->pose.orientation.x, msg->pose.orientation.y,
+              msg->pose.orientation.z, msg->pose.orientation.w);
+      is_goal_pose_changed_ = true;
+
+      // Convert to 4x4 homogeneous transform
+      Eigen::Quaterniond quat(
+        msg->pose.orientation.w,
+        msg->pose.orientation.x,
+        msg->pose.orientation.y,
+        msg->pose.orientation.z);
+      Eigen::Matrix3d R = quat.toRotationMatrix();
+
+      x_goal_.linear() = R;
+      x_goal_.translation() << msg->pose.position.x,
+                               msg->pose.position.y,
+                               msg->pose.position.z;
+    }
+
+    void Controller::subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
+    {
+        RCLCPP_INFO(node_->get_logger(),
+              " Target Base vel received: linear = %.3f, %.3f, angular = %.3f",
+              msg->linear.x, msg->linear.y, msg->angular.z);
+
+        base_vel_desired_(0) = msg->linear.x;
+        base_vel_desired_(1) = msg->linear.y;
+        base_vel_desired_(2) = msg->angular.z;
+    }
+
+    void Controller::pubEEPoseCallback()
+    {
+      Eigen::Matrix4d T = x_.matrix();
+
+      auto ee_pose_msg = geometry_msgs::msg::PoseStamped();
+      ee_pose_msg.header.frame_id = "world";
+      ee_pose_msg.header.stamp = node_->now();
+
+      ee_pose_msg.pose.position.x = T(0, 3);
+      ee_pose_msg.pose.position.y = T(1, 3);
+      ee_pose_msg.pose.position.z = T(2, 3);
+
+      Eigen::Matrix3d R = T.block<3,3>(0,0);
+      Eigen::Quaterniond q(R);
+      ee_pose_msg.pose.orientation.x = q.x();
+      ee_pose_msg.pose.orientation.y = q.y();
+      ee_pose_msg.pose.orientation.z = q.z();
+      ee_pose_msg.pose.orientation.w = q.w();
+      
+      ee_pose_pub_->publish(ee_pose_msg);
+    }
+
+
+    VectorXd Controller::ManiPDControl(const VectorXd& q_mani_desired, const VectorXd& qdot_mani_desired)
+    {
+        Vector7d Kp, Kv;
+        Kp.setConstant(400);
+        Kv.setConstant(40);
+        Vector7d f = Kp.asDiagonal() * (q_mani_desired - q_mani_) + Kv.asDiagonal() * (qdot_mani_desired - qdot_mani_);
+        return (robot_->getMassMatrixActuated()).block(0,0,7,7) * f + (robot_->getGravityActuated()).segment(0,7);
+    }
+
+    VectorXd Controller::MobileAdmControl(const VectorXd& torque_mobile_desired)
+    {
+        double J = 0.02;   // wheel inertia [kg·m²]
+        double B = 0.1;    // wheel damping [N·m·s/rad]
+
+        VectorXd alpha = (torque_mobile_desired - B * qdot_mobile_) / J;
+        VectorXd omega = qdot_mobile_ + alpha * dt_;
+
+        return omega;
+    }
+
+    VectorXd Controller::MobileIK(const VectorXd& desired_base_vel)
+    {
+        const double W = 0.2045*2; // Distance between right and left wheels
+        const double H = 0.2225*2; // Distance between front and rear wheels
+        const double R = 0.120;    // Radius of wheels
+
+        Vector2d base_vel_lim, base_acc_lim;
+        base_vel_lim << 1.5, 2.0; // [linear (m/s), angular (rad/s)]
+        base_acc_lim << 1.0, 1.0; // [linear (m/s^2), angular (rad/s^2)]min
+
+        Vector2d desired_v = desired_base_vel.head(2); // [vel_x, vel_y]
+        double desired_v_norm = desired_v.norm();
+        Vector2d desired_v_dir;
+        if(fabs(desired_v_norm) < 1E-4)
+        {
+            desired_v_dir.setZero();
+        }
+        else
+        {
+            desired_v_dir = desired_v / desired_v_norm;
+        }
+
+        desired_v_norm = std::min(std::max(desired_v_norm, -base_vel_lim(0)), base_vel_lim(0));
+        double desired_w = std::min(std::max(desired_base_vel(2), -base_vel_lim(1)), base_vel_lim(1));
+
+        Vector3d desired_vel;
+        desired_vel.head(2) = desired_v_dir * desired_v_norm;
+        desired_vel(2) = desired_w;
+        
+        MatrixXd J;
+        J.setZero(4,3);
+        J << 1.0, -1.0, -(W+H)/2.0,
+             1.0,  1.0,  (W+H)/2.0,
+             1.0,  1.0, -(W+H)/2.0,
+             1.0, -1.0,  (W+H)/2.0;
+        J = J / R;
+        return J * desired_vel;
+    }
+
+    /* register with the global registry */
+    REGISTER_MJ_CONTROLLER(Controller, "XLSFR3Controller")
+}
