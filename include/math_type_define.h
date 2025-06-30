@@ -4,6 +4,7 @@
 
 #define DEG2RAD (0.01745329251994329576923690768489)
 // constexpr size_t MAX_DOF=50;
+#define COD_THRESHOLD 1.0E-6
 
 #include <algorithm>
 #include <Eigen/Dense>
@@ -523,6 +524,76 @@ namespace DyrosMath
 		phi = (s1f + s2f + s3f) * (-1.0 / 2.0);
 
 		return phi;
+	}
+
+	static Eigen::MatrixXd PinvCOD(const Eigen::MatrixXd &A)
+    {
+        Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cod(A.rows(), A.cols());
+        cod.setThreshold(COD_THRESHOLD);
+        cod.compute(A);
+
+        return cod.pseudoInverse();
+    }
+
+	// template <typename _Matrix_Type_>
+    // static void PinvCOD(const _Matrix_Type_ &A, _Matrix_Type_ &ret)
+    // {
+    //     Eigen::CompleteOrthogonalDecomposition<_Matrix_Type_> cod(A.rows(), A.cols());
+    //     cod.setThreshold(COD_THRESHOLD);
+    //     cod.compute(A);
+
+    //     ret = cod.pseudoInverse();
+    // }
+
+	// template <typename _Matrix_Type_>
+    // static void PinvCOD(const _Matrix_Type_ &A, _Matrix_Type_ &ret, _Matrix_Type_ &V2)
+    // {
+    //     int rows = A.rows();
+    //     int cols = A.cols();
+    //     Eigen::CompleteOrthogonalDecomposition<_Matrix_Type_> cod(rows, cols);
+    //     cod.setThreshold(COD_THRESHOLD);
+    //     cod.compute(A);
+    //     int rank = cod.rank();
+    //     _Matrix_Type_ Vtemp = cod.householderQ().transpose();
+    //     V2 = (Vtemp).block(rank, 0, rows - rank, cols);
+
+    //     ret = cod.pseudoInverse();
+    // }
+
+	inline double getRBF(const double &h, const double &delta=-0.5)
+	{
+		// Grandia, Ruben, et al. 
+		// "Feedback mpc for torque-controlled legged robots." 
+		// 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
+		double result;
+		if (h >= delta) result = log(h+1);
+		else            result = log(delta+1) + 1/(delta+1) * (h-delta) - 1/(2*pow(delta+1,2)) * pow(h-delta,2);
+		return result;
+	}
+
+	inline Eigen::VectorXd getRBF(const Eigen::VectorXd &h, const double &delta=-0.5)
+	{
+		Eigen::VectorXd result(h.size());
+		for(size_t i=0; i<result.size(); i++) result(i) = getRBF(delta, h(i));
+		return result;
+	}
+
+	inline double getDRBF(const double &h, const double &delta=-0.5)
+	{
+		// Grandia, Ruben, et al. 
+		// "Feedback mpc for torque-controlled legged robots." 
+		// 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
+		double result;
+		if (h >= delta) result = 1/(h+1);
+		else            result = 1/(delta+1) - 1/(pow(delta+1,2)) * (h-delta);
+		return result;
+	}
+
+	inline Eigen::VectorXd getDRBF(const Eigen::VectorXd &h, const double &delta=-0.5)
+	{
+		Eigen::VectorXd result(h.size());
+		for(size_t i=0; i<result.size(); i++) result(i) = getDRBF(delta, h(i));
+		return result;
 	}
 
 }
