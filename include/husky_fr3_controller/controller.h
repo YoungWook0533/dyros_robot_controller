@@ -3,6 +3,7 @@
 #include "mujoco_ros_sim/ControllerRegistry.hpp"
 
 #include "husky_fr3_controller/robot_data.h"
+#include "QP/QP_moma_wholebody.h"
 
 #include <std_msgs/msg/int32.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -57,16 +58,8 @@ Husky FR3 Joint/Sensor Information
 
 namespace HuskyFR3Controller
 {
-    typedef Eigen::Matrix<double,7,7> Matrix7d;
-    typedef Eigen::Matrix<double,7,1> Vector7d;
-    typedef Eigen::Matrix<double,9,9> Matrix9d;
-    typedef Eigen::Matrix<double,9,1> Vector9d;
-    typedef Eigen::Matrix<double,12,12> Matrix12d;
-    typedef Eigen::Matrix<double,12,1> Vector12d;
-    typedef Eigen::Matrix<double,13,1> Vector13d;
-
-    class Controller : public ControllerInterface
-    {
+  class Controller : public ControllerInterface
+  {
     public:
         // ====================================================================================
         // ================================== Core Functions ================================== 
@@ -91,12 +84,13 @@ namespace HuskyFR3Controller
         // ====================================================================================
         // ================================= Control Functions ================================
         // ====================================================================================
-        VectorXd ManiPDControl(const VectorXd& q_mani_desired, const VectorXd& qdot_mani_desired);
-        VectorXd MobileAdmControl(const VectorXd& torque_mobile_desired);
-        VectorXd MobileIK(const VectorXd& desired_base_vel);
+        ManiVec ManiPDControl(const ManiVec& q_mani_desired, const ManiVec& qdot_mani_desired);
+        MobiVec MobileAdmControl(const MobiVec& torque_mobile_desired);
+        MobiVec MobileIK(const Vector3d& desired_base_vel);
 
     private :
-        std::unique_ptr<RobotData> robot_;
+        std::shared_ptr<RobotData> robot_;
+
         rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr            key_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr target_pose_sub_;
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr       base_vel_sub_;
@@ -104,52 +98,50 @@ namespace HuskyFR3Controller
         
         rclcpp::TimerBase::SharedPtr ee_pose_pub_timer_;
         
-        std::vector<std::string> rd_joint_names_;
-
-        SuhanBenchmark mobile_timer_;
-
         bool is_mode_changed_{false};
         bool is_goal_pose_changed_{false};
         std::string mode_{"home"};
         double control_start_time_;
         double current_time_;
 
-        Vector2d base_vel_; // [lin, ang]
-        Vector2d base_vel_desired_;
+        // mobile base
+        Vector3d base_vel_; // [lin_x, lin_y, ang] wrt base frame
+        Vector3d base_vel_desired_;
         
         //// joint space state
-        Vector3d q_virtual_;
-        Vector4d q_virtual_tmp_;
-        Vector3d q_virtual_init_;
-        Vector3d q_virtual_desired_;
-        Vector3d qdot_virtual_;
-        Vector3d qdot_virtual_init_;
-        Vector3d qdot_virtual_desired_;
+        VirtualVec q_virtual_;
+        VirtualVec q_virtual_init_;
+        VirtualVec q_virtual_desired_;
+        VirtualVec qdot_virtual_;
+        VirtualVec qdot_virtual_init_;
+        VirtualVec qdot_virtual_desired_;
 
-        Vector7d q_mani_;
-        Vector7d q_mani_init_;
-        Vector7d q_mani_desired_;
-        Vector7d qdot_mani_;
-        Vector7d qdot_mani_init_;
-        Vector7d qdot_mani_desired_;
+        ManiVec q_mani_;
+        ManiVec q_mani_init_;
+        ManiVec q_mani_desired_;
+        ManiVec qdot_mani_;
+        ManiVec qdot_mani_init_;
+        ManiVec qdot_mani_desired_;
 
-        Vector2d q_mobile_;
-        Vector2d q_mobile_init_;
-        Vector2d q_mobile_desired_;
-        Vector2d qdot_mobile_;
-        Vector2d qdot_mobile_init_;
+        MobiVec q_mobile_;
+        MobiVec q_mobile_init_;
+        MobiVec q_mobile_desired_;
+        MobiVec qdot_mobile_;
+        MobiVec qdot_mobile_init_;
 
         //// operation space state
         Affine3d x_;
         Affine3d x_goal_;
         Affine3d x_init_;
         Affine3d x_desired_;
-        Vector6d xdot_;
-        Vector6d xdot_init_;
-        Vector6d xdot_desired_;
+        TaskVec xdot_;
+        TaskVec xdot_init_;
+        TaskVec xdot_desired_;
 
         //// control input
-        Vector7d torque_mani_desired_;
-        Vector2d qdot_mobile_desired_;
+        ManiVec torque_mani_desired_;
+        MobiVec qdot_mobile_desired_;
+
+        std::unique_ptr<QP::MOMAWholebody> wholebody_qp_;
     };
 } // namespace HuskyFR3Controller

@@ -3,39 +3,15 @@
 
 namespace HuskyFR3Controller
 {
-    /*
-     Total nq = 12
-     Total nv = 12
-     
-      id | name              | nq | nv | idx_q | idx_v
-     ----+-------------------+----+----+-------+------
-       1 |         v_x_joint |  1 |  1 |     0 |    0
-       2 |         v_y_joint |  1 |  1 |     1 |    1
-       3 |         v_t_joint |  1 |  1 |     2 |    2
-       4 |        fr3_joint1 |  1 |  1 |     3 |    3
-       5 |        fr3_joint2 |  1 |  1 |     4 |    4
-       6 |        fr3_joint3 |  1 |  1 |     5 |    5
-       7 |        fr3_joint4 |  1 |  1 |     6 |    6
-       8 |        fr3_joint5 |  1 |  1 |     7 |    7
-       9 |        fr3_joint6 |  1 |  1 |     8 |    8
-      10 |        fr3_joint7 |  1 |  1 |     9 |    9
-      11 |        left_wheel |  1 |  1 |    10 |   10
-      12 |       right_wheel |  1 |  1 |    11 |   11
 
-    */
     RobotData::RobotData(const std::string& urdf_path, const bool verbose)
     {
         std::ifstream file(urdf_path);
         if (!file.good()) std::cout << "\033[1;31m" << "URDF file does not exist! : " << "\033[0m" << urdf_path << "\033[0m" << std::endl;
         
-        // pinocchio::JointModelPlanar planar;
-        // pinocchio::urdf::buildModel(urdf_path, planar, model_, false);
         pinocchio::urdf::buildModel(urdf_path, model_, false);
         data_ = pinocchio::Data(model_);
                 
-        joint_names_ = model_.names;
-        joint_names_.erase(joint_names_.begin());  // Remove the first element "universe_joint"
-
         if(verbose)
         {
             std::cout << "Total nq = " << model_.nq << '\n' << "Total nv = " << model_.nv << "\n\n";
@@ -52,111 +28,80 @@ namespace HuskyFR3Controller
             }
         }
 
+        ee_index_ = model_.getFrameId(ee_name_);
 
         // Initialize joint space state
-        q_.setZero(model_.nq);
-        qdot_.setZero(model_.nv);
+        q_.setZero();
+        qdot_.setZero();
 
-        q_actuated_.setZero(model_.nq-3);
-        qdot_actuated_.setZero(model_.nv-3);
+        q_actuated_.setZero();
+        qdot_actuated_.setZero();
 
         // Initialize task space state
         x_.setIdentity();
         xdot_.setZero();
-        J_.setZero(6, model_.nv);
-        Jdot_.setZero(6, model_.nv-3);
-        J_actuated_.setZero(6, model_.nv-3);
+        J_.setZero();
+        Jdot_.setZero();
+        J_actuated_.setZero();
+        J_actuateddot_.setZero();
 
         // Initialize joint space dynamics
-        M_.setZero(model_.nv, model_.nv);
-        M_inv_.setZero(model_.nv, model_.nv);
-        g_.setZero(model_.nv);       
-        c_.setZero(model_.nv);       
-        NLE_.setZero(model_.nv);   
+        M_.setZero();
+        M_inv_.setZero();
+        g_.setZero();       
+        c_.setZero();       
+        NLE_.setZero();   
         
-        M_actuated_.setZero(model_.nv-3, model_.nv-3);
-        M_inv_actuated_.setZero(model_.nv-3, model_.nv-3);
-        g_actuated_.setZero(model_.nv-3);       
-        c_actuated_.setZero(model_.nv-3);       
-        NLE_actuated_.setZero(model_.nv-3);
+        M_actuated_.setZero();
+        M_inv_actuated_.setZero();
+        g_actuated_.setZero();       
+        c_actuated_.setZero();       
+        NLE_actuated_.setZero();
 
         // Initialize selection matrix for virtual joints
-        S_.setZero(model_.nv, model_.nv-3);
-        S_.bottomRightCorner(model_.nv-3, model_.nv-3).setIdentity();
-
-        J_tmp_.setZero(3, 2);
-        Matrix<double, 3,3> J1;
-        Matrix<double, 3,2> J2;
-        J1 << 1, 0, -mobile2mani_y,
-              0, 1,  mobile2mani_x,
-              0, 0,  1;
-        J2 << wheel_radius_/2.,               wheel_radius_/2.,
-              0.,                             0.,
-              -wheel_radius_/(mobile_width_), wheel_radius_/(mobile_width_);
-        J_tmp_ = J1 * J2;
+        S_.setZero();
+        Sdot_.setZero();
+        J_mobile_.setZero();
     }
 
     RobotData::~RobotData()
     {
     }
 
-    bool RobotData::updateState(const VectorXd& q, const VectorXd& qdot)
+    bool RobotData::updateState(const JointVec& q, const JointVec& qdot)
     {
         q_ = q;
         qdot_ = qdot;
-        q_actuated_ = q_.tail(model_.nq-3);
-        qdot_actuated_ = qdot_.tail(model_.nv-3);
+        q_actuated_.segment<MANI_DOF>(actuator_idx.mani_start) = q_.segment<MANI_DOF>(joint_idx.mani_start);
+        q_actuated_.segment<MOBI_DOF>(actuator_idx.mobi_start) = q_.segment<MOBI_DOF>(joint_idx.mobi_start);
+        qdot_actuated_.segment<MANI_DOF>(actuator_idx.mani_start) = qdot_.segment<MANI_DOF>(joint_idx.mani_start);
+        qdot_actuated_.segment<MOBI_DOF>(actuator_idx.mobi_start) = qdot_.segment<MOBI_DOF>(joint_idx.mobi_start);
 
         if(!updateKinematics(q_, qdot_)) return false;
         if(!updateDynamics(q_, qdot_)) return false;
         return true;
     }
 
-    bool RobotData::updateKinematics(const VectorXd& q, const VectorXd& qdot)
-    {        
-        if(q.size() != model_.nq)
-        {
-            std::cerr << "\033[1;31m" << "updateDynamics Error: size of q " << q.size() << " is not equal to model.nq size: " << "\033[0m" << model_.nq << "\033[0m" << std::endl;
-            return false;
-        }
-        if(qdot.size() != model_.nv)
-        {
-            std::cerr << "\033[1;31m" << "updateDynamics Error: size of qdot " << qdot.size() << " is not equal to model.nv size: " << "\033[0m" << model_.nv << "\033[0m" << std::endl;
-            return false;
-        }
-        
-        pinocchio::FrameIndex link_index = model_.getFrameId(ee_name_);
-        if (link_index == static_cast<pinocchio::FrameIndex>(-1))
-        {
-            std::cerr << "\033[1;31m" << "Error: Link name " << ee_name_ << " not found in URDF." << "\033[0m" << std::endl;
-            return false;
-        }
-        
+    bool RobotData::updateKinematics(const JointVec& q, const JointVec& qdot)
+    {             
+        J_mobile_ = computeMobileFKJacobian(q.segment<MOBI_DOF>(joint_idx.mobi_start));
         S_ = computeSelectionMatrix(q_);
+        Sdot_ = computeSelectionMatrixTimeVariation(q_, qdot_);
         
         pinocchio::computeJointJacobians(model_, data_, q);
         pinocchio::computeJointJacobiansTimeVariation(model_, data_, q, qdot);
-        x_ = getPose(ee_name_);
-        J_ = getJacobian(ee_name_);
+        x_.matrix() = data_.oMf[ee_index_].toHomogeneousMatrix();
+        J_ = pinocchio::getFrameJacobian(model_, data_, ee_index_, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
         J_actuated_ = J_ * S_;
-        xdot_ = J_actuated_ * qdot.tail(model_.nv-3);
-        Jdot_ = getJacobianTimeVariation();
+        xdot_ = J_actuated_ * qdot_actuated_;
+        pinocchio::getFrameJacobianTimeVariation(model_, data_, ee_index_, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot_);
+        J_actuateddot_ = Jdot_ * S_ + J_ * Sdot_;
 
         return true;
     }
 
-    bool RobotData::updateDynamics(const VectorXd& q, const VectorXd& qdot)
+    bool RobotData::updateDynamics(const JointVec& q, const JointVec& qdot)
     {
-        if(q.size() != model_.nq)
-        {
-            std::cerr << "\033[1;31m" << "updateDynamics Error: size of q " << q.size() << " is not equal to model.nq size: " << model_.nq << "\033[0m" << std::endl;
-            return false;
-        }
-        if(qdot.size() != model_.nv)
-        {
-            std::cerr << "\033[1;31m" << "updateDynamics Error: size of qdot " << qdot.size() << " is not equal to model.nv size: " << model_.nv << "\033[0m" << std::endl;
-            return false;
-        }
         pinocchio::crba(model_, data_, q);
         pinocchio::computeGeneralizedGravity(model_, data_, q);
         pinocchio::nonLinearEffects(model_, data_, q, qdot);
@@ -164,13 +109,13 @@ namespace HuskyFR3Controller
         // update joint space dynamics
         M_ = data_.M;
         M_ = M_.selfadjointView<Upper>();  // Only upper triangular part of M_ is computed by pinocchio::crba
-        M_inv_ = M_.inverse();
+        M_inv_ = DyrosMath::PinvCOD(M_);
         g_ = data_.g;
         NLE_ = data_.nle;
         c_ = NLE_ - g_;
         
         M_actuated_ = S_.transpose() * M_ * S_;
-        M_inv_actuated_ = M_actuated_.inverse();
+        M_inv_actuated_ = DyrosMath::PinvCOD(M_actuated_);
         g_actuated_ = S_.transpose() * g_;
         NLE_actuated_ = S_.transpose() * NLE_;
         c_actuated_ = NLE_actuated_ - g_actuated_;
@@ -178,248 +123,290 @@ namespace HuskyFR3Controller
         return true;
     }
 
-    Matrix4d RobotData::computePose(const VectorXd& q, const std::string& link_name)
-    {
-        assert(q.size() == model_.nq);
-
-        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
-        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
-        {
-            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return Matrix4d::Identity();
-        }
-        pinocchio::Data tmp_data;
-        pinocchio::framesForwardKinematics(model_, tmp_data, q);
-        Matrix4d link_pose = tmp_data.oMf[link_index].toHomogeneousMatrix();
-
-        return link_pose;
-    }
-
-    Matrix4d RobotData::getPose(const std::string& link_name)
+    Affine3d RobotData::computePose(const JointVec& q, const std::string& link_name)
     {
         pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
         if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
         {
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return Matrix4d::Identity();
+            return Affine3d::Identity();
         }
-        Matrix4d link_pose = data_.oMf[link_index].toHomogeneousMatrix();
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::framesForwardKinematics(model_, data, q);
+        Affine3d link_pose;
+        link_pose.matrix() = data.oMf[link_index].toHomogeneousMatrix();
 
         return link_pose;
     }
 
-    MatrixXd RobotData::computeSelectionMatrix(const VectorXd& q)
+    Affine3d RobotData::getPose(const std::string& link_name) const
     {
-        assert(q.size() == model_.nq);
+        if(link_name == ee_name_) return x_;
+        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
+        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
+        {
+            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
+            return Affine3d::Identity();
+        }
+        Affine3d link_pose;
+        link_pose.matrix() = data_.oMf[link_index].toHomogeneousMatrix();
 
-        MatrixXd S_tmp;
-        S_tmp.setZero(model_.nv, model_.nv-3);
-        S_tmp.bottomRightCorner(model_.nv-3, model_.nv-3).setIdentity();
-        // double mobile_yaw = std::atan2(q(3), q(2)); // q(2) = cos(θ), q(3) = sin(θ)
-        double mobile_yaw = std::atan2(std::sin(q(2)), std::cos(q(2))); // q(2) = θ
-        Matrix3d R_wolrd2Base;
-        R_wolrd2Base << cos(mobile_yaw), -sin(mobile_yaw), 0,
+        return link_pose;
+    }
+
+    Matrix<double,JOINT_DOF,ACTUATOR_DOF> RobotData::computeSelectionMatrix(const JointVec& q)
+    {
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S;
+        S.setZero();
+        S.block<MANI_DOF,MANI_DOF>(joint_idx.mani_start,actuator_idx.mani_start).setIdentity();
+        S.block<MOBI_DOF,MOBI_DOF>(joint_idx.mobi_start,actuator_idx.mobi_start).setIdentity();
+        double mobile_yaw = q(joint_idx.virtual_start + 2);
+        Matrix3d R_world2Base, v_mobile2mani;
+        R_world2Base << cos(mobile_yaw), -sin(mobile_yaw), 0,
                         sin(mobile_yaw),  cos(mobile_yaw), 0,
                         0,                0,               1;
-        S_tmp.block(0,7,3,2) = R_wolrd2Base * J_tmp_;
-        return S_tmp;
+        v_mobile2mani << 1, 0, -mobile2mani_y,
+                         0, 1,  mobile2mani_x,
+                         0, 0,  1;
+        S.block<VIRTUAL_DOF,MOBI_DOF>(joint_idx.virtual_start,actuator_idx.mobi_start) = R_world2Base * v_mobile2mani * computeMobileFKJacobian(q.segment<MOBI_DOF>(joint_idx.mobi_start));
+        return S;
     }
 
-    MatrixXd RobotData::computeJacobian(const VectorXd& q, const std::string& link_name)
+    Matrix<double,JOINT_DOF,ACTUATOR_DOF> RobotData::computeSelectionMatrixTimeVariation(const JointVec& q, const JointVec& qdot)
     {
-        assert(q.size() == model_.nq);
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S;
+        S.setZero();
+        S.block<MANI_DOF,MANI_DOF>(joint_idx.mani_start,actuator_idx.mani_start).setIdentity();
+        S.block<MOBI_DOF,MOBI_DOF>(joint_idx.mobi_start,actuator_idx.mobi_start).setIdentity();
+        double mobile_yaw = q(joint_idx.virtual_start + 2);
+        Matrix3d R_world2Basedot, v_mobile2mani;
+        R_world2Basedot << -sin(mobile_yaw),  -cos(mobile_yaw), 0,
+                            cos(mobile_yaw),  -sin(mobile_yaw), 0,
+                            0,                 0,               0;
+        v_mobile2mani << 1, 0, -mobile2mani_y,
+                         0, 1,  mobile2mani_x,
+                         0, 0,  1;
+        R_world2Basedot *= qdot(joint_idx.virtual_start + 2); // qdot(2) = θdot
+        S.block<VIRTUAL_DOF,MOBI_DOF>(joint_idx.virtual_start,actuator_idx.mobi_start) = R_world2Basedot * v_mobile2mani * computeMobileFKJacobian(q.segment<MOBI_DOF>(joint_idx.mobi_start)); // J_tmp_ is constant wrt time
+        return S;
+    }
 
+    Matrix<double,TASK_DOF,JOINT_DOF> RobotData::computeJacobian(const JointVec& q, const std::string& link_name)
+    {
         pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
         if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
         {
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv);
+            return Matrix<double,TASK_DOF,JOINT_DOF>::Zero();
+        }
+        Matrix<double,TASK_DOF,JOINT_DOF> J;
+        J.setZero();
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::computeJointJacobians(model_, data, q);
+        pinocchio::computeFrameJacobian(model_, data, q, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, J);
+
+        return J;
+    }
+
+    Matrix<double,TASK_DOF,ACTUATOR_DOF> RobotData::computeJacobianActuated(const ActuatorVec& q_act, const std::string& link_name)
+    {
+        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
+        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
+        {
+            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
+            return Matrix<double,TASK_DOF,ACTUATOR_DOF>::Zero();
         }
         
-        MatrixXd J;
-        J.setZero(6, model_.nv);
-        pinocchio::Data tmp_data;
-        pinocchio::computeFrameJacobian(model_, tmp_data, q, link_index, J);
+        JointVec q;
+        q.setZero();
+        q.segment<MANI_DOF>(joint_idx.mani_start) = q_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        q.segment<MOBI_DOF>(joint_idx.mobi_start) = q_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S = computeSelectionMatrix(q);
+        Matrix<double,TASK_DOF,JOINT_DOF> J = computeJacobian(q, link_name);
 
-        return J;
+        return J * S;
     }
 
-    MatrixXd RobotData::computeJacobianActuated(const VectorXd& q, const std::string& link_name)
+    Matrix<double,TASK_DOF,JOINT_DOF> RobotData::getJacobian(const std::string& link_name)
     {
-        assert(q.size() == model_.nq);
-
+        if(link_name == ee_name_) return J_;
         pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
         if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
         {
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv-3);
+            return Matrix<double,TASK_DOF,JOINT_DOF>::Zero();
         }
-        MatrixXd S_tmp = computeSelectionMatrix(q_);
 
-        MatrixXd J = computeJacobian(q, link_name);
-        J = J * S_tmp;
-
-        return J;
+        return pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
     }
 
-    MatrixXd RobotData::getJacobian(const std::string& link_name)
+    Matrix<double,TASK_DOF,ACTUATOR_DOF> RobotData::getJacobianActuated(const std::string& link_name)
+    {
+        if(link_name == ee_name_) return J_actuated_;
+        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
+        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
+        {
+            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
+            return Matrix<double,TASK_DOF,ACTUATOR_DOF>::Zero();
+        }
+
+        return getJacobian(link_name)*S_;
+    }
+
+    Matrix<double,TASK_DOF,ACTUATOR_DOF> RobotData::getJacobianActuatedTimeVariation(const std::string& link_name)
+    {
+        if(link_name == ee_name_) return J_actuateddot_;
+        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
+        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
+        {
+            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
+            return Matrix<double,TASK_DOF,ACTUATOR_DOF> ::Zero();
+        }
+
+        return getJacobianTimeVariation(link_name) * S_ + getJacobian(link_name) * Sdot_;
+    }
+
+    Matrix<double,TASK_DOF,JOINT_DOF> RobotData::computeJacobianTimeVariation(const JointVec& q, const JointVec& qdot, const std::string& link_name)
     {
         pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
         if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
         {
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv);
+            return Matrix<double,TASK_DOF,JOINT_DOF>::Zero();
         }
-        MatrixXd J = pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
-        // MatrixXd J = pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::WORLD);
-
-        return J;
-    }
-
-    MatrixXd RobotData::getJacobianActuated(const std::string& link_name)
-    {
-        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
-        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
-        {
-            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv);
-        }
-        MatrixXd J = pinocchio::getFrameJacobian(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED);
-
-        return J*S_;
-    }
-
-    MatrixXd RobotData::computeJacobianTimeVariation(const VectorXd& q, const VectorXd& qdot, const std::string& link_name)
-    {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
-
-        pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
-        if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
-        {
-            std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv);
-        }
-        MatrixXd Jdot;
-        Jdot.setZero(6, model_.nv);
-        pinocchio::Data tmp_data;
-        pinocchio::computeJointJacobiansTimeVariation(model_, tmp_data, q, qdot_);
-        pinocchio::getFrameJacobianTimeVariation(model_, tmp_data, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot);
+        Matrix<double,TASK_DOF,JOINT_DOF> Jdot;
+        Jdot.setZero();
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::computeJointJacobiansTimeVariation(model_, data, q, qdot);
+        pinocchio::getFrameJacobianTimeVariation(model_, data, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot);
 
         return Jdot;
     }
 
-    MatrixXd RobotData::getJacobianTimeVariation(const std::string& link_name)
+    Matrix<double,TASK_DOF,JOINT_DOF> RobotData::getJacobianTimeVariation(const std::string& link_name)
     {
+        if(link_name == ee_name_) return Jdot_;
         pinocchio::FrameIndex link_index = model_.getFrameId(link_name);
         if (link_index == static_cast<pinocchio::FrameIndex>(-1))  
         {
             std::cerr << "\033[1;31m" << "Error: Link name " << link_name << " not found in URDF." << "\033[0m" << std::endl;
-            return MatrixXd::Zero(6, model_.nv);
+            return Matrix<double,TASK_DOF,JOINT_DOF>::Zero();
         }
-        MatrixXd Jdot;
-        Jdot.setZero(6, model_.nv);
+        Matrix<double,TASK_DOF,JOINT_DOF> Jdot;
+        Jdot.setZero();
         pinocchio::getFrameJacobianTimeVariation(model_, data_, link_index, pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED, Jdot);
 
         return Jdot;
     }
 
-    Vector6d RobotData::computeVelocity(const VectorXd& q, const VectorXd& qdot, const std::string& link_name)
+    TaskVec RobotData::computeVelocity(const JointVec& q, const JointVec& qdot, const std::string& link_name)
     {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
-
-        MatrixXd J = computeJacobianActuated(q, link_name);
+        Matrix<double,TASK_DOF,JOINT_DOF> J = computeJacobian(q, link_name);
         
-        return J * qdot.tail(model_.nv-3);
+        return J * qdot;
     }
 
-    Vector6d RobotData::getVelocity(const std::string& link_name)
+    TaskVec RobotData::getVelocity(const std::string& link_name)
     {
-        // MatrixXd J = getJacobianActuated(link_name);
-        // return J * qdot_.tail(model_.nv-3);
-        MatrixXd J = getJacobian(link_name);
-        return J * qdot_;
+        if(link_name == ee_name_) return xdot_;
+        return getJacobian(link_name) * qdot_;
     }
 
-    MatrixXd RobotData::computeMassMatrix(const VectorXd& q)
+    JointMat RobotData::computeMassMatrix(const JointVec& q)
+    {      
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::crba(model_, data, q);
+        data.M = data.M.selfadjointView<Upper>();  // Only upper triangular part of M_ is computed by pinocchio::crba
+
+        return data.M;
+    }
+
+    ActuatorMat RobotData::computeMassMatrixActuated(const ActuatorVec& q_act)
     {
-        assert(q.size() == model_.nq);
+        JointVec q;
+        q.setZero();
+        q.segment<MANI_DOF>(joint_idx.mani_start) = q_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        q.segment<MOBI_DOF>(joint_idx.mobi_start) = q_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
+
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S = computeSelectionMatrix(q);
+
+        return S.transpose() * computeMassMatrix(q) * S;
+    }
+
+    JointVec RobotData::computeCoriolis(const JointVec& q, const JointVec& qdot)
+    { 
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::computeCoriolisMatrix(model_, data, q, qdot);
+
+        return data.C * qdot;
+    }
+
+    ActuatorVec RobotData::computeCoriolisActuated(const ActuatorVec& q_act, const ActuatorVec& qdot_act)
+    {
+        JointVec q,qdot;
+        q.setZero();
+        q.segment<MANI_DOF>(joint_idx.mani_start) = q_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        q.segment<MOBI_DOF>(joint_idx.mobi_start) = q_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
+        qdot.setZero();
+        qdot.segment<MANI_DOF>(joint_idx.mani_start) = qdot_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        qdot.segment<MOBI_DOF>(joint_idx.mobi_start) = qdot_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
+
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S = computeSelectionMatrix(q);
         
-        pinocchio::Data tmp_data;
-        pinocchio::crba(model_, tmp_data, q);
-        tmp_data.M = tmp_data.M.selfadjointView<Upper>();  // Only upper triangular part of M_ is computed by pinocchio::crba
-
-        return tmp_data.M;
+        return S.transpose() * (computeNonlinearEffects(q, qdot) - computeGravity(q));
     }
 
-    MatrixXd RobotData::computeMassMatrixActuated(const VectorXd& q)
+    JointVec RobotData::computeGravity(const JointVec& q)
+    {      
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::computeGeneralizedGravity(model_, data, q);
+
+        return data.g;
+    }
+
+    ActuatorVec RobotData::computeGravityActuated(const ActuatorVec& q_act)
     {
-        assert(q.size() == model_.nq);
+        JointVec q;
+        q.setZero();
+        q.segment<MANI_DOF>(joint_idx.mani_start) = q_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        q.segment<MOBI_DOF>(joint_idx.mobi_start) = q_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
         
-        MatrixXd S_tmp = computeSelectionMatrix(q_);
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S = computeSelectionMatrix(q);
 
-        return S_tmp.transpose() * computeMassMatrix(q) * S_tmp;
+        return S.transpose() * computeGravity(q);
     }
 
-    VectorXd RobotData::computeCoriolis(const VectorXd& q, const VectorXd& qdot)
+    JointVec RobotData::computeNonlinearEffects(const JointVec& q, const JointVec& qdot)
     {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
-        
-        pinocchio::Data tmp_data;
-        pinocchio::computeCoriolisMatrix(model_, tmp_data, q, qdot);
+        pinocchio::Data data = pinocchio::Data(model_);
+        pinocchio::nonLinearEffects(model_, data, q, qdot);
 
-        return tmp_data.C * qdot;
+        return data.nle;
     }
 
-    VectorXd RobotData::computeCoriolisActuated(const VectorXd& q, const VectorXd& qdot)
+    ActuatorVec RobotData::computeNonlinearEffectsActuated(const ActuatorVec& q_act, const ActuatorVec& qdot_act)
     {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
+        JointVec q,qdot;
+        q.setZero();
+        q.segment<MANI_DOF>(joint_idx.mani_start) = q_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        q.segment<MOBI_DOF>(joint_idx.mobi_start) = q_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
+        qdot.setZero();
+        qdot.segment<MANI_DOF>(joint_idx.mani_start) = qdot_act.segment<MANI_DOF>(actuator_idx.mani_start);
+        qdot.segment<MOBI_DOF>(joint_idx.mobi_start) = qdot_act.segment<MOBI_DOF>(actuator_idx.mobi_start);
 
-        MatrixXd S_tmp = computeSelectionMatrix(q_);
-        
-        return S_tmp.transpose() * (computeNonlinearEffects(q, qdot) - computeGravity(q));
+        Matrix<double,JOINT_DOF,ACTUATOR_DOF> S = computeSelectionMatrix(q);
+
+        return S.transpose() * computeNonlinearEffects(q, qdot);
     }
 
-    VectorXd RobotData::computeGravity(const VectorXd& q)
+    Matrix<double,VIRTUAL_DOF,MOBI_DOF> RobotData::computeMobileFKJacobian(const MobiVec& q_mobile)
     {
-        assert(q.size() == model_.nq);
-        
-        pinocchio::Data tmp_data;
-        pinocchio::computeGeneralizedGravity(model_, tmp_data, q);
+        Matrix<double,VIRTUAL_DOF,MOBI_DOF> J;
+        J.setZero();
+        J << wheel_radius_/2.,               wheel_radius_/2.,
+             0.,                             0.,
+             -wheel_radius_/(mobile_width_), wheel_radius_/(mobile_width_);
 
-        return tmp_data.g;
-    }
-
-    VectorXd RobotData::computeGravityActuated(const VectorXd& q)
-    {
-        assert(q.size() == model_.nq);
-        
-        MatrixXd S_tmp = computeSelectionMatrix(q_);
-
-        return S_tmp.transpose() * computeGravity(q);
-    }
-
-    VectorXd RobotData::computeNonlinearEffects(const VectorXd& q, const VectorXd& qdot)
-    {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
-
-        pinocchio::Data tmp_data;
-        pinocchio::nonLinearEffects(model_, tmp_data, q, qdot);
-
-        return tmp_data.nle;
-    }
-
-    VectorXd RobotData::computeNonlinearEffectsActuated(const VectorXd& q, const VectorXd& qdot)
-    {
-        assert(q.size() == model_.nq);
-        assert(qdot.size() == model_.nv);
-
-        MatrixXd S_tmp = computeSelectionMatrix(q_);
-
-        return S_tmp.transpose() * computeNonlinearEffects(q, qdot);
+        return J;
     }
 }

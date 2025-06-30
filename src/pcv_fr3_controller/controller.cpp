@@ -1,25 +1,25 @@
-#include "xls_fr3_controller/controller.h"
+#include "pcv_fr3_controller/controller.h"
 
-namespace XLSFR3Controller
+namespace PCVFR3Controller
 {
     Controller::Controller(const rclcpp::Node::SharedPtr& node, double dt, JointDict jd)
     : ControllerInterface(node, dt, std::move(jd))
     {
         std::string urdf_path = ament_index_cpp::get_package_share_directory("dyros_robot_controller")
-                                + "/robot/xls_fr3.urdf";
+                                + "/robot/pcv_fr3.urdf";
         robot_ = std::make_shared<RobotData>(urdf_path, true);
 
         key_sub_ = node_->create_subscription<std_msgs::msg::Int32>(
-                    "xls_fr3_controller/mode_input", 10,
+                    "pcv_fr3_controller/mode_input", 10,
                     std::bind(&Controller::keyCallback, this, std::placeholders::_1));
         target_pose_sub_ = node_->create_subscription<geometry_msgs::msg::PoseStamped>(
-                            "xls_fr3_controller/target_pose", 10,
+                            "pcv_fr3_controller/target_pose", 10,
                             std::bind(&Controller::subtargetPoseCallback, this, std::placeholders::_1));
         base_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
-                            "xls_fr3_controller/cmd_vel", 10,
+                            "pcv_fr3_controller/cmd_vel", 10,
                             std::bind(&Controller::subtargetBaseVelCallback, this, std::placeholders::_1));
         ee_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
-                        "xls_fr3_controller/ee_pose", 10);
+                        "pcv_fr3_controller/ee_pose", 10);
         
         base_vel_.setZero();
         base_vel_desired_.setZero();
@@ -116,7 +116,7 @@ namespace XLSFR3Controller
 
         qdot_virtual_.head(2) = sensors_dict.at("linear_velocity_sensor").head(2);
         qdot_virtual_(2) = sensors_dict.at("angular_velocity_sensor")(2);
-        
+
         // get mobile base velocity
         Matrix2d rot_base2world;
         rot_base2world << cos(q_virtual_(2)), sin(q_virtual_(2)),
@@ -131,16 +131,26 @@ namespace XLSFR3Controller
             q_mani_(i) = pos_dict.at(name)(0);
             qdot_mani_(i) = vel_dict.at(name)(0);
         }
-
+        
         // get mobile wheel joint
-        q_mobile_(0) = pos_dict.at("front_left_wheel_rolling_joint")(0);
-        q_mobile_(1) = pos_dict.at("front_right_wheel_rolling_joint")(0);
-        q_mobile_(2) = pos_dict.at("rear_left_wheel_rolling_joint")(0);
-        q_mobile_(3) = pos_dict.at("rear_right_wheel_rolling_joint")(0);
-        qdot_mobile_(0) = vel_dict.at("front_left_wheel_rolling_joint")(0);
-        qdot_mobile_(1) = vel_dict.at("front_right_wheel_rolling_joint")(0);
-        qdot_mobile_(2) = vel_dict.at("rear_left_wheel_rolling_joint")(0);
-        qdot_mobile_(3) = vel_dict.at("rear_right_wheel_rolling_joint")(0);
+        q_mobile_(0) = pos_dict.at("front_left_steer")(0);
+        q_mobile_(1) = pos_dict.at("front_left_rotate")(0);
+        q_mobile_(2) = pos_dict.at("front_right_steer")(0);
+        q_mobile_(3) = pos_dict.at("front_right_rotate")(0);
+        q_mobile_(4) = pos_dict.at("rear_left_steer")(0);
+        q_mobile_(5) = pos_dict.at("rear_left_rotate")(0);
+        q_mobile_(6) = pos_dict.at("rear_right_steer")(0);
+        q_mobile_(7) = pos_dict.at("rear_right_rotate")(0);
+
+        qdot_mobile_(0) = vel_dict.at("front_left_steer")(0);
+        qdot_mobile_(1) = vel_dict.at("front_left_rotate")(0);
+        qdot_mobile_(2) = vel_dict.at("front_right_steer")(0);
+        qdot_mobile_(3) = vel_dict.at("front_right_rotate")(0);
+        qdot_mobile_(4) = vel_dict.at("rear_left_steer")(0);
+        qdot_mobile_(5) = vel_dict.at("rear_left_rotate")(0);
+        qdot_mobile_(6) = vel_dict.at("rear_right_steer")(0);
+        qdot_mobile_(7) = vel_dict.at("rear_right_rotate")(0);
+
 
         JointVec q;
         JointVec qdot;
@@ -153,9 +163,9 @@ namespace XLSFR3Controller
 
         if(!robot_->updateState(q, qdot))
         {
-            RCLCPP_ERROR(node_->get_logger(), "[HuskyFR3RobotData] Failed to update robot state.");
+            RCLCPP_ERROR(node_->get_logger(), "[PCVFR3RobotData] Failed to update robot state.");
         }
-
+        
         // get ee
         x_ = robot_->getPose();
         xdot_ = robot_->getVelocity();
@@ -346,10 +356,14 @@ namespace XLSFR3Controller
     CtrlInputMap Controller::getCtrlInput() const
     {
         CtrlInputMap ctrl_dict;
-        ctrl_dict["front_left_wheel"]  = qdot_mobile_desired_(0);
-        ctrl_dict["front_right_wheel"] = qdot_mobile_desired_(1);
-        ctrl_dict["rear_left_wheel"]   = qdot_mobile_desired_(2);
-        ctrl_dict["rear_right_wheel"]  = qdot_mobile_desired_(3);
+        ctrl_dict["front_left_steer"]   = qdot_mobile_desired_(0);
+        ctrl_dict["front_left_rotate"]  = qdot_mobile_desired_(1);
+        ctrl_dict["front_right_steer"]  = qdot_mobile_desired_(2);
+        ctrl_dict["front_right_rotate"] = qdot_mobile_desired_(3);
+        ctrl_dict["rear_left_steer"]    = qdot_mobile_desired_(4);
+        ctrl_dict["rear_left_rotate"]   = qdot_mobile_desired_(5);
+        ctrl_dict["rear_right_steer"]   = qdot_mobile_desired_(6);
+        ctrl_dict["rear_right_rotate"]  = qdot_mobile_desired_(7);
         for(size_t i=0; i<7; i++)
         {
             const std::string name = "fr3_joint" + std::to_string(i+1);
@@ -451,13 +465,14 @@ namespace XLSFR3Controller
 
     MobiVec Controller::MobileIK(const Vector3d& desired_base_vel)
     {
-        const double W = 0.2045*2; // Distance between right and left wheels
-        const double H = 0.2225*2; // Distance between front and rear wheels
-        const double R = 0.120;    // Radius of wheels
+        const double W = 0.125*2; // Distance between right and left wheels
+        const double H = 0.215*2; // Distance between front and rear wheels
+        const double R = 0.055;   // Radius of wheels
+        const double b = 0.020;   // Distance of offset between the wheel center and the caster point
 
         Vector2d base_vel_lim, base_acc_lim;
-        base_vel_lim << 1.5, 2.0; // [linear (m/s), angular (rad/s)]
-        base_acc_lim << 1.0, 1.0; // [linear (m/s^2), angular (rad/s^2)]min
+        base_vel_lim << 1.5, 2.0; // [linear (m/s),   angular (rad/s)]
+        base_acc_lim << 1.0, 1.0; // [linear (m/s^2), angular (rad/s^2)]
 
         Vector2d desired_v = desired_base_vel.head(2); // [vel_x, vel_y]
         double desired_v_norm = desired_v.norm();
@@ -480,14 +495,23 @@ namespace XLSFR3Controller
         
         Matrix<double,MOBI_DOF,3> J;
         J.setZero();
-        J << 1.0, -1.0, -(W+H)/2.0,
-             1.0,  1.0,  (W+H)/2.0,
-             1.0,  1.0, -(W+H)/2.0,
-             1.0, -1.0,  (W+H)/2.0;
-        J = J / R;
+        for(size_t i=0; i<4; i++)
+        {
+            double h = sqrt(pow(W/2.0, 2) + pow(H/2.0, 2));
+            double phi = q_mobile_(2*i); // steering angle
+            
+            double beta;
+            if(i == 0)      beta = atan2(W/2.0, H/2.0);   // front left
+            else if(i == 1) beta = atan2(-W/2.0, H/2.0);  // front right
+            else if(i == 2) beta = atan2(W/2.0, -H/2.0);  // rear left
+            else if(i == 3) beta = atan2(-W/2.0, -H/2.0); // rear right
+
+            J.block(i*2, 0, 2, 3) << -sin(phi)/b,  cos(phi)/b,  h*( cos(phi)*cos(beta) + sin(phi)*sin(beta) )/b - 1,
+                                      cos(phi)/R,  sin(phi)/R,  h*( sin(phi)*cos(beta) - cos(phi)*sin(beta) )/R;
+        }
         return J * desired_vel;
     }
 
     /* register with the global registry */
-    REGISTER_MJ_CONTROLLER(Controller, "XLSFR3Controller")
+    REGISTER_MJ_CONTROLLER(Controller, "PCVFR3Controller")
 }
