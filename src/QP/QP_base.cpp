@@ -21,18 +21,18 @@ namespace QP
         q_ds_.setZero(nx_);
         
         A_ineq_ds_.setZero(nineqc_, nx_);
-        l_ineq_ds_.setZero(nineqc_);
-        u_ineq_ds_.setZero(nineqc_);
+        l_ineq_ds_.setConstant(nineqc_,-std::numeric_limits<double>::infinity());
+        u_ineq_ds_.setConstant(nineqc_,std::numeric_limits<double>::infinity());
         
-        l_bound_ds_.setZero(nbc_);
-        u_bound_ds_.setZero(nbc_);
+        l_bound_ds_.setConstant(nbc_,-std::numeric_limits<double>::infinity());
+        u_bound_ds_.setConstant(nbc_,std::numeric_limits<double>::infinity());
         
         A_eq_ds_.setZero(neqc_, nx_);
         b_eq_ds_.setZero(neqc_);
         
         A_ds_.setZero(nc_, nx_);
-        l_ds_.setZero(nc_);
-        u_ds_.setZero(nc_);
+        l_ds_.setConstant(nc_,-std::numeric_limits<double>::infinity());
+        u_ds_.setConstant(nc_,std::numeric_limits<double>::infinity());
 
         time_status_.setZero();
     }
@@ -78,6 +78,8 @@ namespace QP
         setConstraint();
         time_status.set_constraint = timer_.elapsedAndReset();
         time_status.set_qp = time_status.set_cost + time_status.set_bound + time_status.set_ineq + time_status.set_eq + time_status.set_constraint; 
+        // std::cout << "P:\n" << P_ds_<<std::endl;
+        // std::cout << "q: " << q_ds_.transpose()<<std::endl;
         // std::cout << "l: " << l_ds_.transpose()<<std::endl;
         // std::cout << "u: " << u_ds_.transpose()<<std::endl;
         // std::cout << "A:\n " << A_ds_ << std::endl;

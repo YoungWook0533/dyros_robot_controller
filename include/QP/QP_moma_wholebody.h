@@ -3,40 +3,40 @@
 
 #include "QP/QP_base.h"
 #include "math_type_define.h"
-#include "husky_fr3_controller/robot_data.h"
-
-#define MANI_DOF 7 // 7 for FR3
-#define MOBI_DOF 2 // 2 for Mobile
-#define JOINT_DOF 9 // 7 for FR3, 2 for Mobile
-#define TASK_DOF 6  // 6 for end-effector
+#include "robot_data/mobile_manipulator.h"
 
 namespace QP
 {
     class MOMAWholebody : public Base
     {
         public:
-            MOMAWholebody();
-            void setCurrentState(std::shared_ptr<HuskyFR3Controller::RobotData> robot_data);
-            void setDesiredEEAcc(const Matrix<double, TASK_DOF, 1> &xddot_desired);
-            bool getOptJoint(Matrix<double, JOINT_DOF, 1> &opt_etadot, Matrix<double, JOINT_DOF, 1> &opt_tau, TimeDuration &time_status);
+            MOMAWholebody(std::shared_ptr<RobotDataMobileManipulator> robot_data);
+            void setDesiredEEAcc(const VectorXd &xddot_desired);
+            bool getOptJoint(VectorXd &opt_etadot, VectorXd &opt_tau, TimeDuration &time_status);
 
         private:
             struct QPIndex
             {
-                int eta_dot = 0; // 0-8
-                int tau = JOINT_DOF; // 9-17
+                int eta_dot_start; // qddot_actuated 
+                int tau_start;     // torque_actuated
+                int slack_start;   // slack for task
                 
                 // equality
-                int con_dyn = 0;  // 0-8
+                int con_dyn_start; // dynamics constraint
                 
                 // inequality
-                int con_q_mani_min = 0;  // 0-6
-                int con_q_mani_max = MANI_DOF;  // 7-13
-                int con_mani_sing = 2*MANI_DOF; // 14
+                int con_q_mani_min_start; // min q_manipulator
+                int con_q_mani_max_start; // max q_manipulator
+                int con_sing; // singularity
+                int con_sel_col; // self collision
             }si_index_;
 
-            std::shared_ptr<HuskyFR3Controller::RobotData> robot_data_;
-            Matrix<double, TASK_DOF, 1> xddot_desired_;
+            std::shared_ptr<RobotDataMobileManipulator> robot_data_;
+            
+            int joint_dof_;
+            int mani_dof_;
+
+            VectorXd xddot_desired_;
             
             void setCost() override;
             void setBoundConstraint() override;
