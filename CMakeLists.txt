@@ -22,12 +22,21 @@ include(${mujoco_ros_sim_DIR}/MRSController.cmake)
 
 include_directories(include)
 
+add_library(RobotData_lib SHARED
+            src/robot_data/robot_data_base.cpp
+            src/robot_data/manipulator.cpp
+            src/robot_data/mobile_manipulator.cpp)
+
+target_link_libraries(RobotData_lib PUBLIC
+                      pinocchio::pinocchio
+                      rclcpp::rclcpp)
+
 add_library(QP_lib SHARED
             src/QP/QP_base.cpp
             src/QP/QP_moma_wholebody.cpp)
 
 target_link_libraries(QP_lib PUBLIC
-                      pinocchio::pinocchio
+                      RobotData_lib
                       OsqpEigen::OsqpEigen)
             
 mrs_add_controller(fr3_controller
@@ -43,7 +52,9 @@ mrs_add_controller(husky_fr3_controller
 
 target_link_libraries(husky_fr3_controller PUBLIC
                       pinocchio::pinocchio
+                      RobotData_lib
                       QP_lib)
+
 
 mrs_add_controller(xls_fr3_controller
                    src/xls_fr3_controller/controller.cpp
@@ -51,7 +62,8 @@ mrs_add_controller(xls_fr3_controller
 
 target_link_libraries(xls_fr3_controller PUBLIC
                       pinocchio::pinocchio
-                      OsqpEigen::OsqpEigen)
+                      RobotData_lib
+                      QP_lib)
 
 mrs_add_controller(pcv_fr3_controller
                    src/pcv_fr3_controller/controller.cpp
@@ -59,7 +71,8 @@ mrs_add_controller(pcv_fr3_controller
 
 target_link_libraries(pcv_fr3_controller PUBLIC
                       pinocchio::pinocchio
-                      OsqpEigen::OsqpEigen)
+                      RobotData_lib
+                      QP_lib)
 
 install(DIRECTORY robot/  DESTINATION share/${PROJECT_NAME}/robot)
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
