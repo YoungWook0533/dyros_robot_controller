@@ -7,7 +7,9 @@ namespace PCVFR3Controller
     {
         std::string urdf_path = ament_index_cpp::get_package_share_directory("dyros_robot_controller")
                                 + "/robot/pcv_fr3.urdf";
-        robot_ = std::make_shared<RobotData>(urdf_path, true);
+        std::string srdf_path = ament_index_cpp::get_package_share_directory("dyros_robot_controller")
+                                + "/robot/pcv_fr3.srdf";
+        robot_ = std::make_shared<PCVFR3RobotData>(urdf_path, srdf_path, true);
 
         key_sub_ = node_->create_subscription<std_msgs::msg::Int32>(
                     "pcv_fr3_controller/mode_input", 10,
@@ -18,8 +20,12 @@ namespace PCVFR3Controller
         base_vel_sub_ = node_->create_subscription<geometry_msgs::msg::Twist>(
                             "pcv_fr3_controller/cmd_vel", 10,
                             std::bind(&Controller::subtargetBaseVelCallback, this, std::placeholders::_1));
-        ee_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(
-                        "pcv_fr3_controller/ee_pose", 10);
+        joint_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
+                            "/joint_states_raw", 10,
+                            std::bind(&Controller::subJointStatesCallback, this, std::placeholders::_1));
+
+        ee_pose_pub_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>("pcv_fr3_controller/ee_pose", 10);
+        joint_pub_ = node_->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
         
         base_vel_.setZero();
         base_vel_desired_.setZero();
@@ -54,6 +60,8 @@ namespace PCVFR3Controller
         
         torque_mani_desired_.setZero();
         qdot_mobile_desired_.setZero();
+
+        wholebody_qp_ = std::make_unique<QP::MOMAWholebody>(robot_);
     }
 
     Controller::~Controller()
@@ -229,9 +237,37 @@ namespace PCVFR3Controller
         }
         else if(mode_ == "wholebody_grav_comp")
         {
-            ActuatorVec torque_desired = robot_->getGravityActuated();
-            torque_mani_desired_ = torque_desired.segment<MANI_DOF>(actuator_idx.mani_start); 
-            qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
+            // ============================ Version 1 ======================================
+            // Just gravity compensation
+            // ActuatorVec torque_desired = robot_->getGravityActuated();
+            // torque_mani_desired_ = torque_desired.segment<MANI_DOF>(actuator_idx.mani_start); 
+            // qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
+            
+            // ============================ Version 2 ======================================
+            // With QP
+            wholebody_qp_->setDesiredEEAcc(TaskVec::Zero());
+
+            VectorXd torque_desired;
+            VectorXd qddot_desired;
+            QP::TimeDuration tmp;
+            if(!wholebody_qp_->getOptJoint(qddot_desired, torque_desired, tmp))
+            {
+                RCLCPP_INFO(node_->get_logger(), "\033[31m QP did not solve properly! \033[0m");
+                torque_mani_desired_ = (robot_->getGravityActuated()).segment(actuator_idx.mani_start,MANI_DOF);
+                qdot_mobile_desired_.setZero();
+            }
+            else
+            {
+                // std::cout << "\n\nSet cost: "        << tmp.set_cost*1000 << std::endl;
+                // std::cout << "Set bound: "       << tmp.set_bound*1000 << std::endl;
+                // std::cout << "Set ineq: "        << tmp.set_ineq*1000 << std::endl;
+                // std::cout << "Set eq: "          << tmp.set_eq*1000 << std::endl;
+                // std::cout << "Set constraint: "  << tmp.set_constraint*1000 << std::endl;
+                // std::cout << "Set solver: "      << tmp.set_solver*1000 << std::endl;
+                // std::cout << "Solve qp: "        << tmp.solve_qp*1000 << std::endl;
+                torque_mani_desired_ = torque_desired.segment(actuator_idx.mani_start,MANI_DOF);
+                qdot_mobile_desired_ += qddot_desired.segment(actuator_idx.mobi_start,MOBI_DOF)*dt_;
+            }
         }
         else if(mode_ == "wholebody_impedence")
         {
@@ -279,20 +315,21 @@ namespace PCVFR3Controller
 
             TaskVec xddot_desired = Kv.asDiagonal() * xdot_error + Kp.asDiagonal() * x_error;
 
+
             // ============================ Version 1 ======================================
             // Using HQP formulation (not exact HQP)
         
-            auto J_tilda = robot_->getJacobianActuated();
-            auto J_tilda_dot = robot_->getJacobianActuatedTimeVariation();
-            auto eta = robot_->getJointVelocityActuated();
-            auto M_tilda = robot_->getMassMatrixActuated();
-            auto g_tilda = robot_->getGravityActuated();
+            // auto J_tilda = robot_->getJacobianActuated();
+            // auto J_tilda_dot = robot_->getJacobianActuatedTimeVariation();
+            // auto eta = robot_->getJointVelocityActuated();
+            // auto M_tilda = robot_->getMassMatrixActuated();
+            // auto g_tilda = robot_->getGravityActuated();
 
-            ActuatorVec eta_dot = DyrosMath::PinvCOD(J_tilda.transpose() * J_tilda) * J_tilda.transpose() * (xddot_desired - J_tilda_dot * eta);
-            ActuatorVec torque_desired = M_tilda * eta_dot + g_tilda;
+            // ActuatorVec eta_dot = DyrosMath::PinvCOD(J_tilda.transpose() * J_tilda) * J_tilda.transpose() * (xddot_desired - J_tilda_dot * eta);
+            // ActuatorVec torque_desired = M_tilda * eta_dot + g_tilda;
 
-            torque_mani_desired_ = torque_desired.segment<MANI_DOF>(actuator_idx.mani_start);
-            qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
+            // torque_mani_desired_ = torque_desired.segment<MANI_DOF>(actuator_idx.mani_start);
+            // qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
 
             // ============================ Version 2 ======================================
             // Using Operation Space Control
@@ -313,31 +350,30 @@ namespace PCVFR3Controller
             // qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
 
             // ============================ Version 3 ======================================
+            // TODO: why not working
+            wholebody_qp_->setDesiredEEAcc(xddot_desired);
 
-            // wholebody_qp_->setDesiredEEAcc(xddot_desired);
-            // wholebody_qp_->setCurrentState(robot_);
-
-            // ActuatorVec torque_desired;
-            // ActuatorVec qddot_desired;
-            // QP::TimeDuration tmp;
-            // if(!wholebody_qp_->getOptJoint(qddot_desired, torque_desired, tmp))
-            // {
-            //     RCLCPP_INFO(node_->get_logger(), "\033[31m QP did not solve properly! \033[0m");
-            //     torque_mani_desired_ = (robot_->getGravityActuated()).head(7);
-            //     qdot_mobile_desired_.setZero();
-            // }
-            // else
-            // {
-            //     // std::cout << "\n\nSet cost: "        << tmp.set_cost*1000 << std::endl;
-            //     // std::cout << "Set bound: "       << tmp.set_bound*1000 << std::endl;
-            //     // std::cout << "Set ineq: "        << tmp.set_ineq*1000 << std::endl;
-            //     // std::cout << "Set eq: "          << tmp.set_eq*1000 << std::endl;
-            //     // std::cout << "Set constraint: "  << tmp.set_constraint*1000 << std::endl;
-            //     // std::cout << "Set solver: "      << tmp.set_solver*1000 << std::endl;
-            //     // std::cout << "Solve qp: "        << tmp.solve_qp*1000 << std::endl;
-            //     torque_mani_desired_ = torque_desired.segment<MANI_DOF>(actuator_idx.mani_start);
-            //     qdot_mobile_desired_ = MobileAdmControl(torque_desired.segment<MOBI_DOF>(actuator_idx.mobi_start));
-            // }
+            VectorXd torque_desired;
+            VectorXd qddot_desired;
+            QP::TimeDuration tmp;
+            if(!wholebody_qp_->getOptJoint(qddot_desired, torque_desired, tmp))
+            {
+                RCLCPP_INFO(node_->get_logger(), "\033[31m QP did not solve properly! \033[0m");
+                torque_mani_desired_ = (robot_->getGravityActuated()).segment(actuator_idx.mani_start,MANI_DOF);
+                qdot_mobile_desired_.setZero();
+            }
+            else
+            {
+                // std::cout << "\n\nSet cost: "        << tmp.set_cost*1000 << std::endl;
+                // std::cout << "Set bound: "       << tmp.set_bound*1000 << std::endl;
+                // std::cout << "Set ineq: "        << tmp.set_ineq*1000 << std::endl;
+                // std::cout << "Set eq: "          << tmp.set_eq*1000 << std::endl;
+                // std::cout << "Set constraint: "  << tmp.set_constraint*1000 << std::endl;
+                // std::cout << "Set solver: "      << tmp.set_solver*1000 << std::endl;
+                // std::cout << "Solve qp: "        << tmp.solve_qp*1000 << std::endl;
+                torque_mani_desired_ = torque_desired.segment(actuator_idx.mani_start,MANI_DOF);
+                qdot_mobile_desired_ += qddot_desired.segment(actuator_idx.mobi_start,MOBI_DOF)*dt_;
+            }
 
 
         }
@@ -394,7 +430,7 @@ namespace PCVFR3Controller
     void Controller::subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
     {
       RCLCPP_INFO(node_->get_logger(),
-              " Target pose received: position=(%.3f, %.3f, %.3f), "
+              "Target pose received: position=(%.3f, %.3f, %.3f), "
               "orientation=(%.3f, %.3f, %.3f, %.3f)",
               msg->pose.position.x, msg->pose.position.y, msg->pose.position.z,
               msg->pose.orientation.x, msg->pose.orientation.y,
@@ -416,7 +452,7 @@ namespace PCVFR3Controller
     void Controller::subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
     {
         RCLCPP_INFO(node_->get_logger(),
-              " Target Base vel received: linear = %.3f, %.3f, angular = %.3f",
+              "Target Base vel received: linear = %.3f, %.3f, angular = %.3f",
               msg->linear.x, msg->linear.y, msg->angular.z);
 
         base_vel_desired_(0) = msg->linear.x;
@@ -441,6 +477,29 @@ namespace PCVFR3Controller
       ee_pose_msg.pose.orientation.w = q.w();
       
       ee_pose_pub_->publish(ee_pose_msg);
+    }
+
+    void Controller::subJointStatesCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
+    {
+        
+        auto joint_msg = sensor_msgs::msg::JointState();
+        joint_msg.header = msg->header;
+        joint_msg.name = msg->name;
+        joint_msg.position = msg->position;
+        joint_msg.velocity = msg->velocity;
+        joint_msg.effort = msg->effort;
+
+        const std::vector<std::string> virtual_joints = {"v_x_joint", "v_y_joint", "v_t_joint"};
+        std::vector<double> virtual_pos_vec(q_virtual_.data(), q_virtual_.data() + q_virtual_.size());
+        std::vector<double> virtual_vel_vec(qdot_virtual_.data(), qdot_virtual_.data() + qdot_virtual_.size());
+        std::vector<double> virtual_eff_vec{0,0,0};
+
+        joint_msg.name.insert(joint_msg.name.end(), virtual_joints.begin(), virtual_joints.end());
+        joint_msg.position.insert(joint_msg.position.end(), virtual_pos_vec.begin(), virtual_pos_vec.end());
+        joint_msg.velocity.insert(joint_msg.velocity.end(), virtual_vel_vec.begin(), virtual_vel_vec.end());
+        joint_msg.effort.insert(joint_msg.effort.end(), virtual_eff_vec.begin(), virtual_eff_vec.end());
+
+        joint_pub_->publish(joint_msg);
     }
 
     ManiVec Controller::ManiPDControl(const ManiVec& q_mani_desired, const ManiVec& qdot_mani_desired)

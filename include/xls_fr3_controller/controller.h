@@ -3,6 +3,7 @@
 #include "mujoco_ros_sim/ControllerRegistry.hpp"
 
 #include "xls_fr3_controller/robot_data.h"
+#include "QP/QP_moma_wholebody.h"
 
 #include <std_msgs/msg/int32.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -22,7 +23,7 @@ using namespace Eigen;
 XLS FR3 Joint/Sensor Information
  id | name                 | type   | nq | nv | idx_q | idx_v
 ----+----------------------+--------+----+----+-------+------
-  1 | front_right_wheel_rolling_joint | _Hinge |  1 |  1 |     7 |    6
+  1 | front_right_wheel    | _Hinge |  1 |  1 |     7 |    6
   2 | front_right_slipping_0_joint | _Hinge |  1 |  1 |     8 |    7
   3 | front_right_slipping_1_joint | _Hinge |  1 |  1 |     9 |    8
   4 | front_right_slipping_2_joint | _Hinge |  1 |  1 |    10 |    9
@@ -35,7 +36,7 @@ XLS FR3 Joint/Sensor Information
  11 | front_right_slipping_9_joint | _Hinge |  1 |  1 |    17 |   16
  12 | front_right_slipping_10_joint | _Hinge |  1 |  1 |    18 |   17
  13 | front_right_slipping_11_joint | _Hinge |  1 |  1 |    19 |   18
- 14 | front_left_wheel_rolling_joint | _Hinge |  1 |  1 |    20 |   19
+ 14 | front_left_wheel     | _Hinge |  1 |  1 |    20 |   19
  15 | front_left_slipping_0_joint | _Hinge |  1 |  1 |    21 |   20
  16 | front_left_slipping_1_joint | _Hinge |  1 |  1 |    22 |   21
  17 | front_left_slipping_2_joint | _Hinge |  1 |  1 |    23 |   22
@@ -48,7 +49,7 @@ XLS FR3 Joint/Sensor Information
  24 | front_left_slipping_9_joint | _Hinge |  1 |  1 |    30 |   29
  25 | front_left_slipping_10_joint | _Hinge |  1 |  1 |    31 |   30
  26 | front_left_slipping_11_joint | _Hinge |  1 |  1 |    32 |   31
- 27 | rear_right_wheel_rolling_joint | _Hinge |  1 |  1 |    33 |   32
+ 27 | rear_right_wheel     | _Hinge |  1 |  1 |    33 |   32
  28 | rear_right_slipping_0_joint | _Hinge |  1 |  1 |    34 |   33
  29 | rear_right_slipping_1_joint | _Hinge |  1 |  1 |    35 |   34
  30 | rear_right_slipping_2_joint | _Hinge |  1 |  1 |    36 |   35
@@ -61,7 +62,7 @@ XLS FR3 Joint/Sensor Information
  37 | rear_right_slipping_9_joint | _Hinge |  1 |  1 |    43 |   42
  38 | rear_right_slipping_10_joint | _Hinge |  1 |  1 |    44 |   43
  39 | rear_right_slipping_11_joint | _Hinge |  1 |  1 |    45 |   44
- 40 | rear_left_wheel_rolling_joint | _Hinge |  1 |  1 |    46 |   45
+ 40 | rear_left_wheel      | _Hinge |  1 |  1 |    46 |   45
  41 | rear_left_slipping_0_joint | _Hinge |  1 |  1 |    47 |   46
  42 | rear_left_slipping_1_joint | _Hinge |  1 |  1 |    48 |   47
  43 | rear_left_slipping_2_joint | _Hinge |  1 |  1 |    49 |   48
@@ -84,10 +85,10 @@ XLS FR3 Joint/Sensor Information
 
  id | name                 | trn     | target_joint
 ----+----------------------+---------+-------------
-  0 | front_right_wheel    | _Joint  | front_right_wheel_rolling_joint
-  1 | front_left_wheel     | _Joint  | front_left_wheel_rolling_joint
-  2 | rear_right_wheel     | _Joint  | rear_right_wheel_rolling_joint
-  3 | rear_left_wheel      | _Joint  | rear_left_wheel_rolling_joint
+  0 | front_right_wheel    | _Joint  | front_right_wheel
+  1 | front_left_wheel     | _Joint  | front_left_wheel
+  2 | rear_right_wheel     | _Joint  | rear_right_wheel
+  3 | rear_left_wheel      | _Joint  | rear_left_wheel
   4 | fr3_joint1           | _Joint  | fr3_joint1
   5 | fr3_joint2           | _Joint  | fr3_joint2
   6 | fr3_joint3           | _Joint  | fr3_joint3
@@ -102,6 +103,7 @@ XLS FR3 Joint/Sensor Information
   1 | orientation_sensor          | Framequat        |   4 |   3 | Site:xls_site
   2 | linear_velocity_sensor      | Framelinvel      |   3 |   7 | Site:xls_site
   3 | angular_velocity_sensor     | Frameangvel      |   3 |  10 | Site:xls_site
+
 */
 
 namespace XLSFR3Controller
@@ -126,6 +128,7 @@ namespace XLSFR3Controller
         void keyCallback(const std_msgs::msg::Int32::SharedPtr);
         void subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr);
         void subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr);
+        void subJointStatesCallback(const sensor_msgs::msg::JointState::SharedPtr);
         void pubEEPoseCallback();
         void computeSlowLoop();
 
@@ -137,12 +140,14 @@ namespace XLSFR3Controller
         MobiVec MobileIK(const Vector3d& desired_base_vel);
 
     private :
-        std::shared_ptr<RobotData> robot_;
+        std::shared_ptr<XLSFR3RobotData> robot_;
 
         rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr            key_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr target_pose_sub_;
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr       base_vel_sub_;
+        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr    joint_sub_;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr    ee_pose_pub_;
+        rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr       joint_pub_;
         
         rclcpp::TimerBase::SharedPtr ee_pose_pub_timer_;
         
@@ -190,6 +195,6 @@ namespace XLSFR3Controller
         ManiVec torque_mani_desired_;
         MobiVec qdot_mobile_desired_;
 
-        // std::unique_ptr<QP::MOMAWholebody> wholebody_qp_;
+        std::unique_ptr<QP::MOMAWholebody> wholebody_qp_;
     };
 } // namespace XLSFR3Controller

@@ -78,6 +78,7 @@ namespace HuskyFR3Controller
         void keyCallback(const std_msgs::msg::Int32::SharedPtr);
         void subtargetPoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr);
         void subtargetBaseVelCallback(const geometry_msgs::msg::Twist::SharedPtr);
+        void subJointStatesCallback(const sensor_msgs::msg::JointState::SharedPtr);
         void pubEEPoseCallback();
         void computeSlowLoop();
 
@@ -89,12 +90,14 @@ namespace HuskyFR3Controller
         MobiVec MobileIK(const Vector3d& desired_base_vel);
 
     private :
-        std::shared_ptr<RobotData> robot_;
+        std::shared_ptr<HuskyFR3RobotData> robot_;
 
         rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr            key_sub_;
         rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr target_pose_sub_;
         rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr       base_vel_sub_;
+        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr    joint_sub_;
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr    ee_pose_pub_;
+        rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr       joint_pub_;
         
         rclcpp::TimerBase::SharedPtr ee_pose_pub_timer_;
         
