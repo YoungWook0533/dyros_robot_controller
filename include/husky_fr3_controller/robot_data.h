@@ -1,19 +1,5 @@
 #pragma once
-#include <string>
-#include <mutex>
-#include <shared_mutex>
-#include <Eigen/Dense>
-#include <math.h>
-
-#include <pinocchio/algorithm/kinematics.hpp>
-#include <pinocchio/algorithm/frames.hpp>
-#include <pinocchio/algorithm/rnea.hpp>
-#include <pinocchio/algorithm/joint-configuration.hpp>
-#include <pinocchio/algorithm/crba.hpp>
-#include <pinocchio/algorithm/rnea-derivatives.hpp>
-#include <pinocchio/parsers/urdf.hpp>
-
-#include "math_type_define.h"
+#include "robot_data/mobile_manipulator.h"
 
 using namespace Eigen;
 
@@ -46,20 +32,9 @@ namespace HuskyFR3Controller
     inline constexpr int ACTUATOR_DOF = MANI_DOF + MOBI_DOF;
     inline constexpr int JOINT_DOF    = ACTUATOR_DOF + VIRTUAL_DOF;
 
-    struct JointIndex
-    {
-        const int virtual_start = 0;
-        const int mani_start = VIRTUAL_DOF;
-        const int mobi_start = VIRTUAL_DOF+MANI_DOF;
-    };
-    inline const JointIndex joint_idx{};
-
-    struct ActuatorIndex
-    {
-        const int mani_start = 0;
-        const int mobi_start = MANI_DOF;
-    };
-    inline const ActuatorIndex actuator_idx{};
+    
+    inline const RobotDataMobileManipulator::JointIndex joint_idx{0,VIRTUAL_DOF,VIRTUAL_DOF+MANI_DOF};
+    inline const RobotDataMobileManipulator::ActuatorIndex actuator_idx{0,MANI_DOF};
 
     typedef Eigen::Matrix<double,TASK_DOF,1>                TaskVec;
     typedef Eigen::Matrix<double,TASK_DOF,TASK_DOF>         TaskMat;
@@ -71,96 +46,23 @@ namespace HuskyFR3Controller
     typedef Eigen::Matrix<double,JOINT_DOF,1>               JointVec;
     typedef Eigen::Matrix<double,JOINT_DOF,JOINT_DOF>       JointMat;
 
-    class RobotData
+    class HuskyFR3RobotData: public RobotDataMobileManipulator
     {
-        public:
-            RobotData(const std::string& urdf_path, const bool verbose=false);
-            ~RobotData();
-            bool updateState(const JointVec& q, const JointVec& qdot);
+        public: 
+            HuskyFR3RobotData(const std::string& urdf_path, 
+                              const bool verbose=false);
+            HuskyFR3RobotData(const std::string& urdf_path,
+                              const std::string& srdf_path, 
+                              const bool verbose=false);
 
-            Affine3d computePose(const JointVec& q, const std::string& link_name=ee_name_);
-            Matrix<double,TASK_DOF,JOINT_DOF> computeJacobian(const JointVec& q, const std::string& link_name=ee_name_);
-            Matrix<double,TASK_DOF,JOINT_DOF> computeJacobianTimeVariation(const JointVec& q, const JointVec& qdot, const std::string& link_name=ee_name_);
-            TaskVec computeVelocity(const JointVec& q, const JointVec& qdot, const std::string& link_name=ee_name_);
-            JointMat computeMassMatrix(const JointVec& q);
-            JointVec computeCoriolis(const JointVec& q, const JointVec& qdot);
-            JointVec computeNonlinearEffects(const JointVec& q, const JointVec& qdot);
-            JointVec computeGravity(const JointVec& q);
-            Matrix<double,VIRTUAL_DOF,MOBI_DOF> computeMobileFKJacobian(const MobiVec& q_mobile);
-            Matrix<double,JOINT_DOF,ACTUATOR_DOF> computeSelectionMatrix(const JointVec& q);
-            Matrix<double,JOINT_DOF,ACTUATOR_DOF> computeSelectionMatrixTimeVariation(const JointVec& q, const JointVec& qdot);
-            Matrix<double,TASK_DOF,ACTUATOR_DOF> computeJacobianActuated(const ActuatorVec& q_act, const std::string& link_name);
-            ActuatorMat computeMassMatrixActuated(const ActuatorVec& q_act);
-            ActuatorVec computeCoriolisActuated(const ActuatorVec& q_act, const ActuatorVec& qdot_act);
-            ActuatorVec computeNonlinearEffectsActuated(const ActuatorVec& q_act, const ActuatorVec& qdot_act);
-            ActuatorVec computeGravityActuated(const ActuatorVec& q_act);
-            
-            JointVec getJointPosition() const {return q_;}
-            JointVec getJointVelocity() const {return qdot_;}
-            Affine3d getPose(const std::string& link_name=ee_name_) const;
-            Matrix<double,TASK_DOF,JOINT_DOF>  getJacobian(const std::string& link_name=ee_name_);
-            Matrix<double,TASK_DOF,JOINT_DOF> getJacobianTimeVariation(const std::string& link_name=ee_name_); 
-            Matrix<double,TASK_DOF,ACTUATOR_DOF> getJacobianActuatedTimeVariation(const std::string& link_name=ee_name_);
-            TaskVec getVelocity(const std::string& link_name=ee_name_);
-            JointMat getMassMatrix() const {return M_;}
-            JointMat getMassMatrixInv() const {return M_inv_;}
-            ActuatorMat getMassMatrixActuatedInv() const {return M_inv_actuated_;}
-            JointVec getCoriolis() const {return c_;}
-            JointVec getGravity() const {return g_;}
-            JointVec getNonlinearEffects() const {return NLE_;}
-            ActuatorVec getJointVelocityActuated() const {return qdot_actuated_;}
-            ActuatorVec getJointPositionActuated() const {return q_actuated_;}
-            Matrix<double,3,MOBI_DOF> getMobileFKJacobian() const {return J_mobile_;}
-            Matrix<double,JOINT_DOF,ACTUATOR_DOF> getSelectionMatrix(){return S_;}
-            Matrix<double,TASK_DOF,ACTUATOR_DOF> getJacobianActuated(const std::string& link_name=ee_name_);
-            ActuatorMat getMassMatrixActuated() const {return M_actuated_;}
-            ActuatorVec getCoriolisActuated() const {return c_actuated_;}
-            ActuatorVec getGravityActuated() const {return g_actuated_;}
-            ActuatorVec getNonlinearEffectsActuated() const {return NLE_actuated_;}
-
+            MatrixXd computeMobileFKJacobian(const VectorXd& q_mobile);
+            MatrixXd computeSelectionMatrix(const VectorXd& q);
+            MatrixXd computeSelectionMatrixTimeVariation(const VectorXd& q, const VectorXd& qdot);
+        
         private:
-            bool updateKinematics(const JointVec& q, const JointVec& qdot);
-            bool updateDynamics(const JointVec& q, const JointVec& qdot);
-
-            // pinocchio data
-            pinocchio::Model model_;
-            pinocchio::Data data_;
-            
-            // Selection Matrix for virtual joints
-            Matrix<double,JOINT_DOF,ACTUATOR_DOF> S_;
-            Matrix<double,JOINT_DOF,ACTUATOR_DOF> Sdot_;
             const double wheel_radius_ = 0.1651;
             const double mobile_width_ = 0.2854*2.;
             const double mobile2mani_x = 0.36;
             const double mobile2mani_y = 0.;
-            Matrix<double,3,MOBI_DOF> J_mobile_; // wheel_vel -> mobile_base_vel (wrt base frame) 
-
-            // Joint space state
-            JointVec q_;                    // joint angle
-            JointVec qdot_;                 // joint velocity
-            ActuatorVec q_actuated_;        // joint angle
-            ActuatorVec qdot_actuated_;     // joint velocity
-
-            // Task space state
-            static constexpr const char* ee_name_ = "fr3_link8"; // end-effector link name
-            pinocchio::FrameIndex ee_index_;                     // end-effector link index
-            Affine3d x_;                                         // pose of EE
-            TaskVec xdot_;                                       // velocity of EE
-            Matrix<double,TASK_DOF,JOINT_DOF> J_;                // jacobian of EE
-            Matrix<double,TASK_DOF,JOINT_DOF> Jdot_;             // time derivative of jacobian of EE
-            Matrix<double,TASK_DOF,ACTUATOR_DOF> J_actuated_;    // jacobian of EE
-            Matrix<double,TASK_DOF,ACTUATOR_DOF> J_actuateddot_; // jacobian of EE
-
-            // Joint space Dynamics
-            JointMat M_;                 // inertia matrix
-            JointMat M_inv_;             // inverse of inertia matrix
-            JointVec g_;                 // gravity forces
-            JointVec c_;                 // centrifugal and coriolis forces
-            JointVec NLE_;               // nonlinear effects ( g_ + c_ )
-            ActuatorMat M_actuated_;     // inertia matrix
-            ActuatorMat M_inv_actuated_; // inverse of inertia matrix
-            ActuatorVec g_actuated_;     // gravity forces
-            ActuatorVec c_actuated_;     // centrifugal and coriolis forces
-            ActuatorVec NLE_actuated_;   // nonlinear effects ( g_ + c_ )
     };
 }
