@@ -21,10 +21,6 @@ def generate_launch_description():
             default_value=TextSubstitution(text='false')),
         actions.DeclareLaunchArgument('joy_dev',
             default_value=TextSubstitution(text='0')),
-        actions.DeclareLaunchArgument('config_filepath',
-            default_value=TextSubstitution(text=config_file)),
-        actions.DeclareLaunchArgument('robot_name',
-            default_value=TextSubstitution(text='husky')),
     ]
     
     sim_node = Node(
@@ -35,40 +31,35 @@ def generate_launch_description():
     parameters=[
         {'robot_name': 'fr3_xls'},
         {'controller_class': 'dyros_robot_controller.XLSFR3Controller'},
-    ],
-)
+        ],
+    remappings=[('/joint_states', '/joint_states_raw')],
+    )
 
-    # urdf_path = os.path.join(
-    #     get_package_share_directory('husky_fr3_description'),
-    #     'urdf', 'husky_fr3.urdf')
-    # moveit_config_path = get_package_share_directory('husky_fr3_moveit_config')
-    # moveit_config = (
-    #     MoveItConfigsBuilder("husky_fr3")
-    #     .robot_description(file_path=urdf_path)
-    #     .robot_description_semantic(
-    #         file_path=os.path.join(moveit_config_path, "config", "husky_fr3.srdf"))
-    #     .planning_scene_monitor(
-    #         publish_robot_description=True,
-    #         publish_robot_description_semantic=True
-    #     )
-    #     .to_moveit_configs()
-    # )
-    # rviz_config_file = os.path.join(
-    #     get_package_share_directory("dyros_robot_controller"),
-    #     "launch", 
-    #     "husky_fr3_rviz.rviz"
-    # )
+    urdf_path = os.path.join(get_package_share_directory('dyros_robot_controller'),
+                            'robot', 'xls_fr3.urdf')
+    srdf_path = os.path.join(get_package_share_directory('dyros_robot_controller'),
+                            'robot', 'xls_fr3.srdf')
+    with open(urdf_path, 'r') as infp:
+        robot_description = infp.read()
+    with open(srdf_path, 'r') as infp:
+        robot_description_semantic = infp.read()
+        
+    rviz_config_file = os.path.join(
+        get_package_share_directory("dyros_robot_controller"),
+        "launch", 
+        "xls_fr3_rviz.rviz"
+    )
 
-    # robot_state_publisher = Node(
-    #     package='robot_state_publisher',
-    #     executable='robot_state_publisher',
-    #     name='robot_state_publisher',
-    #     output='screen',
-    #     parameters=[
-    #         moveit_config.robot_description,
-    #         {'use_sim_time': True}
-    #     ]
-    # )
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[
+            {'robot_description': robot_description},
+            {'use_sim_time': True}
+        ]
+    )
     joint_state_publisher = Node(
         package='joint_state_publisher',
         executable='joint_state_publisher',
@@ -76,19 +67,17 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': True}]
     )
-    # rviz_node = Node(
-    #     package="rviz2",
-    #     executable="rviz2",
-    #     name="rviz2",
-    #     output="log",
-    #     arguments=["-d", rviz_config_file],
-    #     parameters=[
-    #         moveit_config.robot_description,
-    #         moveit_config.robot_description_semantic,
-    #         moveit_config.robot_description_kinematics,
-    #         moveit_config.joint_limits,
-    #     ],
-    # )
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+        ],
+    )
 
     gui_node = Node(
         package='dyros_robot_controller',
@@ -121,15 +110,15 @@ def generate_launch_description():
         ],
         remappings=[
             # ('cmd_vel', joy_vel),
-            ('cmd_vel', '/xls_fr3_controller/cmd_vel'),
+            ('cmd_vel', '/xml_fr3_controller/cmd_vel'),
         ],
     )
 
     return LaunchDescription([
         sim_node,
-        # robot_state_publisher,
+        robot_state_publisher,
         joint_state_publisher,
-        # rviz_node,
+        rviz_node,
         gui_node,
         joy_node,
         teleop_twist_joy_node,
