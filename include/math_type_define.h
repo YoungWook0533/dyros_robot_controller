@@ -176,6 +176,23 @@ namespace DyrosMath
 		return res;
 	}
 
+	static Eigen::VectorXd cubicVector(double time,
+									   double time_0,
+									   double time_f,
+									   const Eigen::VectorXd& x_0,
+									   const Eigen::VectorXd& x_f,
+									   const Eigen::VectorXd& x_dot_0,
+									   const Eigen::VectorXd& x_dot_f)
+	{
+		assert(x_0.size() == x_f.size());
+		Eigen::VectorXd res(x_0.size());
+		for (int i = 0; i < x_0.size(); ++i)
+		{
+			res(i) = cubic(time, time_0, time_f, x_0(i), x_f(i), x_dot_0(i), x_dot_f(i));
+		}
+		return res;
+	}
+
 	template <int N>
 	static Eigen::Matrix<double, N, 1> cubicDotVector(double time,     ///< Current time
 		double time_0,   ///< Start time
@@ -189,6 +206,23 @@ namespace DyrosMath
 
 		Eigen::Matrix<double, N, 1> res;
 		for (unsigned int i = 0; i<N; i++)
+		{
+			res(i) = cubicDot(time, time_0, time_f, x_0(i), x_f(i), x_dot_0(i), x_dot_f(i));
+		}
+		return res;
+	}
+
+	static Eigen::VectorXd cubicDotVector(double time,
+                                   double time_0,
+                                   double time_f,
+                                   const Eigen::VectorXd& x_0,
+                                   const Eigen::VectorXd& x_f,
+                                   const Eigen::VectorXd& x_dot_0,
+                                   const Eigen::VectorXd& x_dot_f)
+	{
+		assert(x_0.size() == x_f.size());
+		Eigen::VectorXd res(x_0.size());
+		for (int i = 0; i < x_0.size(); ++i)
 		{
 			res(i) = cubicDot(time, time_0, time_f, x_0(i), x_f(i), x_dot_0(i), x_dot_f(i));
 		}
@@ -594,6 +628,60 @@ namespace DyrosMath
 		Eigen::VectorXd result(h.size());
 		for(size_t i=0; i<result.size(); i++) result(i) = getDRBF(delta, h(i));
 		return result;
+	}
+
+	static void getTaskSpaceError(const Eigen::Affine3d& x_target, 
+						   const Eigen::VectorXd& xdot_target,
+						   const Eigen::Affine3d& x,
+						   const Eigen::VectorXd& xdot,
+						   Eigen::VectorXd& x_error,
+						   Eigen::VectorXd& xdot_error)
+	{
+		x_error.setZero(6);
+		xdot_error.setZero(6);
+		x_error.head(3) = x_target.translation() - x.translation();
+		x_error.tail(3) = getPhi(x_target.rotation(), x.rotation());
+		xdot_error = xdot_target - xdot;
+	}
+
+	static void getTaskSpaceCubic(const Eigen::Affine3d& x_target,
+						   const Eigen::VectorXd& xdot_target,
+						   const Eigen::Affine3d& x_init,
+						   const Eigen::VectorXd& xdot_init,
+						   const double& current_time,
+						   const double& init_time,
+						   const double& duration,
+						   Eigen::Affine3d& x_desired,
+						   Eigen::VectorXd& xdot_desired)
+	{
+		x_desired.setIdentity();
+		xdot_desired.setZero(6);
+		x_desired.translation() = cubicVector(current_time,
+											  init_time,
+											  init_time + duration,
+											  x_init.translation(),
+											  x_target.translation(),
+											  xdot_init.head(3),
+											  xdot_target.head(3));
+		x_desired.linear() = rotationCubic(current_time,
+										   init_time,
+										   init_time + duration,
+										   x_init.rotation(),
+										   x_target.rotation());
+		xdot_desired.head(3) = cubicDotVector(current_time,
+											  init_time,
+											  init_time + duration,
+											  x_init.translation(),
+											  x_target.translation(),
+											  xdot_init.head(3),
+											  xdot_target.head(3));
+		xdot_desired.tail(3) = rotationCubicDot(current_time,
+												init_time,
+												init_time + duration,
+												Eigen::Vector3d::Zero(),
+												Eigen::Vector3d::Zero(),
+												x_init.rotation(),
+												x_target.rotation());
 	}
 
 }

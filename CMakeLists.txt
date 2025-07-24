@@ -8,130 +8,75 @@ endif()
 
 find_package(ament_cmake        REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+find_package(rclcpp             REQUIRED)
+find_package(Eigen3             REQUIRED)
+find_package(pinocchio          REQUIRED)
+find_package(OsqpEigen          REQUIRED)
 
-find_package(mujoco_ros_sim  REQUIRED)   # bindings + helper
-find_package(rclcpp          REQUIRED)
-find_package(Eigen3          REQUIRED)
-find_package(pinocchio       REQUIRED)
-find_package(OsqpEigen       REQUIRED)
-find_package(std_msgs        REQUIRED)
-find_package(geometry_msgs   REQUIRED)
-find_package(sensor_msgs     REQUIRED)
-
-include(${mujoco_ros_sim_DIR}/MRSController.cmake)
 
 include_directories(include)
 
-add_library(RobotData_lib SHARED
-            src/robot_data/robot_data_base.cpp
-            src/robot_data/manipulator.cpp
-            src/robot_data/mobile_manipulator.cpp)
+add_library(RobotData SHARED
+  src/robot_data/mobile/base.cpp
+  src/robot_data/manipulator/base.cpp
+  src/robot_data/mobile_manipulator/base.cpp
+)
 
-target_link_libraries(RobotData_lib PUBLIC
-                      pinocchio::pinocchio
-                      rclcpp::rclcpp)
+target_link_libraries(RobotData PUBLIC
+  pinocchio::pinocchio
+  rclcpp::rclcpp
+)
 
-add_library(QP_lib SHARED
-            src/QP/QP_base.cpp
-            src/QP/QP_moma_wholebody.cpp)
+add_library(QPController SHARED
+  src/QP/base.cpp
+  src/QP/manipulator_IK.cpp
+  src/QP/manipulator_ID.cpp
+  src/QP/mobile_manipulator_IK.cpp
+  src/QP/mobile_manipulator_ID.cpp
+)
 
-target_link_libraries(QP_lib PUBLIC
-                      RobotData_lib
-                      OsqpEigen::OsqpEigen)
-            
-mrs_add_controller(fr3_controller
-                   src/fr3_controller/controller.cpp
-                   src/fr3_controller/robot_data.cpp)
+target_link_libraries(QPController PUBLIC
+  RobotData
+  OsqpEigen::OsqpEigen
+)
 
-target_link_libraries(fr3_controller PUBLIC
-                      pinocchio::pinocchio)
+add_library(RobotController SHARED
+  src/robot_controller/mobile/base.cpp
+  src/robot_controller/manipulator/base.cpp
+  src/robot_controller/mobile_manipulator/base.cpp
+)
 
-mrs_add_controller(husky_fr3_controller
-                   src/husky_fr3_controller/robot_data.cpp
-                   src/husky_fr3_controller/controller.cpp)
+target_link_libraries(RobotController PUBLIC
+  RobotData
+  QPController
+)
 
-target_link_libraries(husky_fr3_controller PUBLIC
-                      pinocchio::pinocchio
-                      RobotData_lib
-                      QP_lib)
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
 
+install(
+  TARGETS RobotData QPController RobotController
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
 
-mrs_add_controller(xls_fr3_controller
-                   src/xls_fr3_controller/controller.cpp
-                   src/xls_fr3_controller/robot_data.cpp)
+ament_export_include_directories(include)
+ament_export_libraries(RobotData RobotController)
+ament_export_dependencies(
+  rclcpp
+  Eigen3
+  pinocchio
+  OsqpEigen
+)
 
-target_link_libraries(xls_fr3_controller PUBLIC
-                      pinocchio::pinocchio
-                      RobotData_lib
-                      QP_lib)
-
-mrs_add_controller(pcv_fr3_controller
-                   src/pcv_fr3_controller/controller.cpp
-                   src/pcv_fr3_controller/robot_data.cpp)
-
-target_link_libraries(pcv_fr3_controller PUBLIC
-                      pinocchio::pinocchio
-                      RobotData_lib
-                      QP_lib)
-
-install(DIRECTORY robot/  DESTINATION share/${PROJECT_NAME}/robot)
-install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
-
-ament_target_dependencies(fr3_controller PUBLIC 
-  std_msgs
-  geometry_msgs
-  sensor_msgs)
-
-ament_target_dependencies(husky_fr3_controller PUBLIC 
-  std_msgs
-  geometry_msgs
-  sensor_msgs)
-
-ament_target_dependencies(xls_fr3_controller PUBLIC 
-  std_msgs
-  geometry_msgs
-  sensor_msgs)
-
-ament_target_dependencies(pcv_fr3_controller PUBLIC 
-  std_msgs
-  geometry_msgs
-  sensor_msgs)
-  
-  
-install(DIRECTORY   config/
-        DESTINATION share/${PROJECT_NAME}/config)
-
-install(PROGRAMS    dyros_robot_controller/fr3_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      FR3ControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/husky_fr3_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      HuskyFR3ControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/xls_fr3_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      XLSFR3ControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/husky_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      HuskyControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/xls_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      XLSControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/pcv_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      PCVControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/ur5e_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      UR5eControllerQT)
-
-install(PROGRAMS    dyros_robot_controller/pcv_fr3_controller/ros2_qt_gui.py
-        DESTINATION lib/${PROJECT_NAME}
-        RENAME      PCVFR3ControllerQT)
+add_library(dyros_robot_controller::RobotData       ALIAS RobotData)
+add_library(dyros_robot_controller::RobotController ALIAS RobotController)
+ament_export_targets(export_${PROJECT_NAME})
             
 ament_python_install_package(${PROJECT_NAME})
 ament_package()
