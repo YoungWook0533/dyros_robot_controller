@@ -42,9 +42,9 @@ namespace RobotController
                                                                  const double& duration);
 
                 virtual void QPIK(const VectorXd& xdot_target,
-                                      const std::string& link_name,
-                                      VectorXd& opt_qdot_mobile,
-                                      VectorXd& opt_qdot_manipulator);
+                                  const std::string& link_name,
+                                  VectorXd& opt_qdot_mobile,
+                                  VectorXd& opt_qdot_manipulator);
 
                 virtual void QPIKStep(const Affine3d& x_target, 
                                       const VectorXd& xdot_target,

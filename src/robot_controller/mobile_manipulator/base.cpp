@@ -109,9 +109,9 @@ namespace RobotController
         }
 
         void MobileManipulatorBase::QPIK(const VectorXd& xdot_target,
-                                             const std::string& link_name,
-                                             VectorXd& opt_qdot_mobile,
-                                             VectorXd& opt_qdot_manipulator)
+                                         const std::string& link_name,
+                                         VectorXd& opt_qdot_mobile,
+                                         VectorXd& opt_qdot_manipulator)
         {  
             // TODO:  at the beginning of moving along z-axis, robot vibrates
             QP_moma_IK_->setDesiredTaskVel(xdot_target, link_name);
@@ -143,15 +143,15 @@ namespace RobotController
     
     
         void MobileManipulatorBase::QPIKCubic(const Affine3d& x_target,
-                                            const VectorXd& xdot_target,
-                                            const Affine3d& x_init,
-                                            const VectorXd& xdot_init,
-                                            const double& current_time,
-                                            const double& init_time,
-                                            const double& duration,
-                                            const std::string& link_name,
-                                            VectorXd& opt_qdot_mobile,
-                                            VectorXd& opt_qdot_manipulator)
+                                              const VectorXd& xdot_target,
+                                              const Affine3d& x_init,
+                                              const VectorXd& xdot_init,
+                                              const double& current_time,
+                                              const double& init_time,
+                                              const double& duration,
+                                              const std::string& link_name,
+                                              VectorXd& opt_qdot_mobile,
+                                              VectorXd& opt_qdot_manipulator)
         {
             Affine3d x_desired;
             VectorXd xdot_desired;

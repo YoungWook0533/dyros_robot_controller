@@ -8,11 +8,19 @@ endif()
 
 find_package(ament_cmake        REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+# find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module Development)
+# find_package(Boost              REQUIRED COMPONENTS python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
+find_package(eigenpy            REQUIRED)
 find_package(rclcpp             REQUIRED)
 find_package(Eigen3             REQUIRED)
 find_package(pinocchio          REQUIRED)
 find_package(OsqpEigen          REQUIRED)
 
+include_directories(
+  ${EIGEN3_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${eigenpy_INCLUDE_DIRS}
+)
 
 include_directories(include)
 
@@ -51,6 +59,25 @@ target_link_libraries(RobotController PUBLIC
   QPController
 )
 
+add_library(${PROJECT_NAME}_cpp_wrapper MODULE
+  src/bindings.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_cpp_wrapper PUBLIC
+  RobotData
+  RobotController
+  Boost::python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}
+  Python3::Module
+  eigenpy::eigenpy
+)
+
+target_include_directories(${PROJECT_NAME}_cpp_wrapper PUBLIC
+  ${Python3_INCLUDE_DIRS})
+
+set_target_properties(${PROJECT_NAME}_cpp_wrapper PROPERTIES
+  PREFIX ""
+  SUFFIX ".so")
+
 install(
   DIRECTORY include/
   DESTINATION include
@@ -63,6 +90,14 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
+)
+
+install(TARGETS ${PROJECT_NAME}_cpp_wrapper
+  LIBRARY DESTINATION lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages
+)
+
+install(TARGETS ${PROJECT_NAME}_cpp_wrapper
+  LIBRARY DESTINATION lib
 )
 
 ament_export_include_directories(include)

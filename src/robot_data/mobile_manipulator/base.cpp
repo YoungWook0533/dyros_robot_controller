@@ -15,6 +15,13 @@ namespace RobotData
           joint_idx_(joint_idx),
           actuator_idx_(actuator_idx)
         {
+            std::cout <<"joint index: " << std::endl;
+            std::cout <<"\tvirtual index: "<<joint_idx.virtual_start << std::endl;
+            std::cout <<"\tmani index: "<<joint_idx.mani_start << std::endl;
+            std::cout <<"\tmobi index: "<<joint_idx.mobi_start << std::endl;
+            std::cout <<"actuator index: " << std::endl;
+            std::cout <<"\tmani index: "<<actuator_idx.mani_start << std::endl;
+            std::cout <<"\tmobi index: "<<actuator_idx.mobi_start << std::endl;
             mobi_dof_ = wheel_num_;
             mani_dof_ = dof_ - (virtual_dof_ + mobi_dof_); // TODO: if manipulator has gripper or other joint, then this code does not work well
             actuated_dof_ = mobi_dof_ + mani_dof_;

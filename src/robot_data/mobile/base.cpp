@@ -8,24 +8,37 @@ namespace RobotData
         MobileBase::MobileBase(const KinematicParam& param)
         : param_(param)
         {
+            std::cout << "Mobile Type: ";
             if(param_.type == DriveType::Differential)
             {
+                std::cout << "Differential " << std::endl;
+                std::cout << "base_width: " << param_.base_width << std::endl;
                 wheel_num_ = 2;
             }
             else if(param_.type == DriveType::Mecanum)
             {
+                std::cout << "Mecanum " << std::endl;
                 assert(param_.roller_angles.size() == param_.base2wheel_positions.size() &&
-                       param_.roller_angles.size() == param_.base2wheel_angles.size() &&
-                       param_.base2wheel_positions.size() == param_.base2wheel_angles.size());
-
+                param_.roller_angles.size() == param_.base2wheel_angles.size() &&
+                param_.base2wheel_positions.size() == param_.base2wheel_angles.size());
                 wheel_num_ = param_.roller_angles.size();
+                std::cout << "roller_angles: ";
+                for(size_t i=0; i<param_.roller_angles.size(); i++) std::cout << param_.roller_angles[i] << " / ";
+                std::cout << "\nbase2wheel_positions: ";
+                for(size_t i=0; i<param_.base2wheel_positions.size(); i++) std::cout << param_.base2wheel_positions[i].transpose() << " / ";
+                std::cout << "\nbase2wheel_angles: ";
+                for(size_t i=0; i<param_.base2wheel_angles.size(); i++) std::cout << param_.base2wheel_angles[i] << " / ";
             }
             else if(param_.type == DriveType::Caster)
             {
-                
+                std::cout << "Caster " << std::endl;
+                std::cout << "offset: " << param_.wheel_offset << std::endl;
+                std::cout << "base2wheel_positions: ";
+                for(size_t i=0; i<param_.base2wheel_positions.size(); i++) std::cout << param_.base2wheel_positions[i].transpose() << " / ";
                 wheel_num_ = int(param_.base2wheel_positions.size()*2);
             }
 
+            std::cout << "\nWheel num: " << wheel_num_ << std::endl;
             wheel_pos_.setZero(wheel_num_);
             wheel_vel_.setZero(wheel_num_);
 
