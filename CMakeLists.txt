@@ -8,8 +8,6 @@ endif()
 
 find_package(ament_cmake        REQUIRED)
 find_package(ament_cmake_python REQUIRED)
-# find_package(Python3 REQUIRED COMPONENTS Interpreter Development.Module Development)
-# find_package(Boost              REQUIRED COMPONENTS python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
 find_package(eigenpy            REQUIRED)
 find_package(rclcpp             REQUIRED)
 find_package(Eigen3             REQUIRED)
