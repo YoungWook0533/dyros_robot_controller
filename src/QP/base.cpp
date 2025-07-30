@@ -21,18 +21,18 @@ namespace QP
         q_ds_.setZero(nx_);
         
         A_ineq_ds_.setZero(nineqc_, nx_);
-        l_ineq_ds_.setConstant(nineqc_,-std::numeric_limits<double>::infinity());
-        u_ineq_ds_.setConstant(nineqc_,std::numeric_limits<double>::infinity());
+        l_ineq_ds_.setConstant(nineqc_,-OSQP_INFTY);
+        u_ineq_ds_.setConstant(nineqc_,OSQP_INFTY);
         
-        l_bound_ds_.setConstant(nbc_,-std::numeric_limits<double>::infinity());
-        u_bound_ds_.setConstant(nbc_,std::numeric_limits<double>::infinity());
+        l_bound_ds_.setConstant(nbc_,-OSQP_INFTY);
+        u_bound_ds_.setConstant(nbc_,OSQP_INFTY);
         
         A_eq_ds_.setZero(neqc_, nx_);
         b_eq_ds_.setZero(neqc_);
         
         A_ds_.setZero(nc_, nx_);
-        l_ds_.setConstant(nc_,-std::numeric_limits<double>::infinity());
-        u_ds_.setConstant(nc_,std::numeric_limits<double>::infinity());
+        l_ds_.setConstant(nc_,-OSQP_INFTY);
+        u_ds_.setConstant(nc_,OSQP_INFTY);
 
         time_status_.setZero();
     }
