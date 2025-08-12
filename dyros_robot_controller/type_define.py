@@ -12,17 +12,25 @@ class KinematicParam:
     def __init__(self,
                  type: DriveType,
                  wheel_radius: float,
+                 max_lin_speed: float = 2.0,
+                 max_ang_speed: float = 2.0,
+                 max_lin_acc: float = 2.0,
+                 max_ang_acc: float = 2.0,
                  base_width: float | None = None,
                  roller_angles: List | None = None,
                  base2wheel_positions: List[np.ndarray] | None = None,
                  base2wheel_angles: List | None = None,
-                 wheel_offset: float | None = None
+                 wheel_offset: float | None = None,
                  ) -> None:
 
         p = drc.KinematicParam()
 
         p.type = drc.DriveType(int(type))
         p.wheel_radius = wheel_radius
+        p.max_lin_speed = max_lin_speed
+        p.max_ang_speed = max_ang_speed
+        p.max_lin_acc = max_lin_acc
+        p.max_ang_acc = max_ang_acc
 
         if type == DriveType.Differential:
             assert(base_width is not None)
