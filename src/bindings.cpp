@@ -283,6 +283,7 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_cpp_wrapper)
         .def_readwrite("mobi_start", &RD_MM::ActuatorIndex::mobi_start);
 
     bp::class_<RDMOBase, boost::noncopyable>("MobileBase", bp::init<const RD_MO::KinematicParam&>())
+        .def("getVerbose",        &RDMOBase::getVerbose)
         .def("updateState",       &RDMOBase::updateState)
         .def("computeBaseVel",    &RDMOBase::computeBaseVel)
         .def("computeFKJacobian", &RDMOBase::computeFKJacobian)
@@ -294,7 +295,8 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_cpp_wrapper)
         .def("getFKJacobian",     &RDMOBase::getFKJacobian,    bp::return_internal_reference<>())
         ;
 
-    bp::class_<RDMNBase, boost::noncopyable>("ManipulatorBase", bp::init<const std::string&, const std::string&, const std::string&, const bool>())
+    bp::class_<RDMNBase, boost::noncopyable>("ManipulatorBase", bp::init<const std::string&, const std::string&, const std::string&>())
+        .def("getVerbose",                   &RDMNBase::getVerbose)
         .def("updateState",                  &RDMNBase::updateState)
         .def("computeMassMatrix",            &RDMNBase::computeMassMatrix)
         .def("computeGravity",               &RDMNBase::computeGravity)
@@ -334,7 +336,8 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_cpp_wrapper)
     typedef RobotData::Manipulator::MinDistResult (RDMMBase::*Min9)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const bool&, const bool&, const bool);
     typedef RobotData::Manipulator::ManipulabilityResult (RDMMBase::*Man5)(const VectorXd&, const VectorXd&, const bool&, const bool&, const std::string&);
 
-    bp::class_<RDMMBase, bp::bases<RDMNBase, RDMOBase>, boost::noncopyable>("MobileManipulatorBase", bp::init<const RD_MO::KinematicParam&, const std::string&, const std::string&, const std::string&, const RD_MM::JointIndex&, const RD_MM::ActuatorIndex&, const bool>())
+    bp::class_<RDMMBase, bp::bases<RDMNBase, RDMOBase>, boost::noncopyable>("MobileManipulatorBase", bp::init<const RD_MO::KinematicParam&, const std::string&, const std::string&, const std::string&, const RD_MM::JointIndex&, const RD_MM::ActuatorIndex&>())
+        .def("getVerbose",                                     &RDMMBase::getVerbose)
         .def("updateState",                  static_cast<Upd6>(&RDMMBase::updateState))
         .def("computeMassMatrix",            static_cast<Mat3>(&RDMMBase::computeMassMatrix))
         .def("computeGravity",               static_cast<Vec3>(&RDMMBase::computeGravity))

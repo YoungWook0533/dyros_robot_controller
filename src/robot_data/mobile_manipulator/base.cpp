@@ -9,19 +9,12 @@ namespace RobotData
                                                      const std::string& srdf_path, 
                                                      const std::string& packages_path, 
                                                      const JointIndex& joint_idx,
-                                                     const ActuatorIndex& actuator_idx,
-                                                     const bool verbose)
-        : MobileBase(mobile_param), ManipulatorBase(urdf_path, srdf_path, packages_path, verbose),
+                                                     const ActuatorIndex& actuator_idx)
+        : MobileBase(mobile_param), 
+          ManipulatorBase(urdf_path, srdf_path, packages_path),
           joint_idx_(joint_idx),
           actuator_idx_(actuator_idx)
         {
-            std::cout <<"joint index: " << std::endl;
-            std::cout <<"\tvirtual index: "<<joint_idx.virtual_start << std::endl;
-            std::cout <<"\tmani index: "<<joint_idx.mani_start << std::endl;
-            std::cout <<"\tmobi index: "<<joint_idx.mobi_start << std::endl;
-            std::cout <<"actuator index: " << std::endl;
-            std::cout <<"\tmani index: "<<actuator_idx.mani_start << std::endl;
-            std::cout <<"\tmobi index: "<<actuator_idx.mobi_start << std::endl;
             mobi_dof_ = wheel_num_;
             mani_dof_ = dof_ - (virtual_dof_ + mobi_dof_); // TODO: if manipulator has gripper or other joint, then this code does not work well
             actuated_dof_ = mobi_dof_ + mani_dof_;
@@ -48,6 +41,43 @@ namespace RobotData
             g_actuated_.setZero(actuated_dof_);       
             c_actuated_.setZero(actuated_dof_);       
             NLE_actuated_.setZero(actuated_dof_);   
+        }
+
+        std::string MobileManipulatorBase::getVerbose() const
+        {
+            std::string tmp_info1 = ManipulatorBase::getVerbose();
+            std::string tmp_info2 = MobileBase::getVerbose();
+            std::ostringstream oss;
+            oss << tmp_info1;
+            oss << "\n"
+                << "==================== Partition Indices ====================\n"
+                << " joint index\n"
+                << " name                | start\n"
+                << "---------------------+------\n"
+                << std::left << std::setw(20) << " virtual"      << " | " << std::right << joint_idx_.virtual_start << '\n'
+                << std::left << std::setw(20) << " manipulator"  << " | " << std::right << joint_idx_.mani_start    << '\n'
+                << std::left << std::setw(20) << " mobile"       << " | " << std::right << joint_idx_.mobi_start    << '\n'
+                << std::left
+                << "\n actuator index\n"
+                << " name                | start\n"
+                << "---------------------+------\n"
+                << std::left << std::setw(20) << " manipulator"  << " | " << std::right << actuator_idx_.mani_start << '\n'
+                << std::left << std::setw(20) << " mobile"       << " | " << std::right << actuator_idx_.mobi_start << '\n';
+
+            oss << "\n"
+                << "======================= DoF Summary =======================\n"
+                << std::left << std::setw(20) << " total dof"        << " | " << std::right << dof_           << '\n'
+                << std::left << std::setw(20) << " virtual dof"      << " | " << std::right << virtual_dof_   << '\n'
+                << std::left << std::setw(20) << " mobile dof"       << " | " << std::right << mobi_dof_      << '\n'
+                << std::left << std::setw(20) << " manipulator dof"  << " | " << std::right << mani_dof_      << '\n'
+                << std::left << std::setw(20) << " actuated dof"     << " | " << std::right << actuated_dof_  << '\n';
+
+            oss << "\n"
+                << "======================= Mobile Summary =======================\n"
+                << tmp_info2;
+
+            return oss.str();
+
         }
 
         bool MobileManipulatorBase::updateState(const VectorXd& q_virtual,

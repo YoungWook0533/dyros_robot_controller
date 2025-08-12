@@ -40,8 +40,11 @@ namespace RobotData
                                       const std::string& srdf_path, 
                                       const std::string& packages_path, 
                                       const JointIndex& joint_idx,
-                                      const ActuatorIndex& actuator_idx,
-                                      const bool verbose=false);
+                                      const ActuatorIndex& actuator_idx);
+
+                using Manipulator::ManipulatorBase::getVerbose;
+                using Mobile::MobileBase::getVerbose;
+                std::string getVerbose() const;
                                                
                 using Manipulator::ManipulatorBase::updateState; 
                 bool updateState(const VectorXd& q_virtual,

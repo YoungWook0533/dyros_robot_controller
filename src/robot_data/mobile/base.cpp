@@ -8,42 +8,100 @@ namespace RobotData
         MobileBase::MobileBase(const KinematicParam& param)
         : param_(param)
         {
-            std::cout << "Mobile Type: ";
             if(param_.type == DriveType::Differential)
             {
-                std::cout << "Differential " << std::endl;
-                std::cout << "base_width: " << param_.base_width << std::endl;
                 wheel_num_ = 2;
             }
             else if(param_.type == DriveType::Mecanum)
             {
-                std::cout << "Mecanum " << std::endl;
                 assert(param_.roller_angles.size() == param_.base2wheel_positions.size() &&
                 param_.roller_angles.size() == param_.base2wheel_angles.size() &&
                 param_.base2wheel_positions.size() == param_.base2wheel_angles.size());
                 wheel_num_ = param_.roller_angles.size();
-                std::cout << "roller_angles: ";
                 for(size_t i=0; i<param_.roller_angles.size(); i++) std::cout << param_.roller_angles[i] << " / ";
-                std::cout << "\nbase2wheel_positions: ";
                 for(size_t i=0; i<param_.base2wheel_positions.size(); i++) std::cout << param_.base2wheel_positions[i].transpose() << " / ";
-                std::cout << "\nbase2wheel_angles: ";
                 for(size_t i=0; i<param_.base2wheel_angles.size(); i++) std::cout << param_.base2wheel_angles[i] << " / ";
             }
             else if(param_.type == DriveType::Caster)
             {
-                std::cout << "Caster " << std::endl;
-                std::cout << "offset: " << param_.wheel_offset << std::endl;
-                std::cout << "base2wheel_positions: ";
                 for(size_t i=0; i<param_.base2wheel_positions.size(); i++) std::cout << param_.base2wheel_positions[i].transpose() << " / ";
                 wheel_num_ = int(param_.base2wheel_positions.size()*2);
             }
 
-            std::cout << "\nWheel num: " << wheel_num_ << std::endl;
             wheel_pos_.setZero(wheel_num_);
             wheel_vel_.setZero(wheel_num_);
 
             J_mobile_.setZero(3, wheel_num_);
             base_vel_.setZero(3);
+        }
+
+        std::string MobileBase::getVerbose() const
+        {
+            std::ostringstream oss;
+            oss.setf(std::ios::fixed);
+            oss << std::setprecision(4);
+
+            auto type_to_str = [](DriveType t) -> const char* {
+                switch (t) {
+                case DriveType::Differential: return "Differential";
+                case DriveType::Mecanum:      return "Mecanum";
+                case DriveType::Caster:       return "Caster";
+                default:                      return "Unknown";
+                }
+            };
+
+            // Summary (table)
+            oss << " name                | value\n"
+                << "---------------------+---------------------------\n"
+                << std::left << std::setw(20) << "type"          << " | " << type_to_str(param_.type) << '\n'
+                << std::left << std::setw(20) << "wheel_num"     << " | " << wheel_num_ << '\n'
+                << std::left << std::setw(20) << "wheel_radius"  << " | " << param_.wheel_radius << '\n';
+
+
+            if (param_.type == DriveType::Differential)
+                oss << std::left << std::setw(20) << "base_width" << " | " << param_.base_width << '\n';
+            if (param_.type == DriveType::Caster)
+                oss << std::left << std::setw(20) << "offset"     << " | " << param_.wheel_offset << '\n';
+
+            oss << '\n';
+
+            // roller_angles (table)
+            if (param_.type == DriveType::Mecanum)
+            {
+                oss << "roller_angles (rad)\n"
+                    << " idx | value\n"
+                    << "-----+------------\n";
+                for (size_t i = 0; i < param_.roller_angles.size(); ++i)
+                    oss << std::right << std::setw(4) << i << " | " << std::setw(10) << param_.roller_angles[i] << '\n';
+                oss << '\n';
+            }
+
+
+            // base2wheel_positions (table)
+            if(param_.type == DriveType::Mecanum || param_.type == DriveType::Caster)
+            {
+                Eigen::IOFormat vecfmt(4, 0, "  ", "", "[", "]"); // [x  y  z]
+                oss << "base2wheel_positions\n"
+                    << " idx | position\n"
+                    << "-----+-------------------------\n";
+                for (size_t i = 0; i < param_.base2wheel_positions.size(); ++i)
+                    oss << std::right << std::setw(4) << i << " | "
+                        << param_.base2wheel_positions[i].transpose().format(vecfmt) << '\n';
+                oss << '\n';
+            }
+
+            // base2wheel_angles (table)
+            if(param_.type == DriveType::Mecanum)
+            {
+                oss << "base2wheel_angles (rad)\n"
+                    << " idx | value\n"
+                    << "-----+------------\n";
+                for (size_t i = 0; i < param_.base2wheel_angles.size(); ++i)
+                    oss << std::right << std::setw(4) << i << " | " << std::setw(10) << param_.base2wheel_angles[i] << '\n';
+                oss << '\n';
+            }
+
+            return oss.str();
         }
 
         bool MobileBase::updateState(const VectorXd& wheel_pos, const VectorXd& wheel_vel)

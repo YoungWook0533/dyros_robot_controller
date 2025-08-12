@@ -4,8 +4,11 @@ import dyros_robot_controller_cpp_wrapper as drc
 
 
 class ManipulatorBase(drc.ManipulatorBase):
-    def __init__(self, urdf_path: str, srdf_path: str, packages_path: str, verbose: bool = False):
-        super().__init__(urdf_path, srdf_path, packages_path, verbose)
+    def __init__(self, urdf_path: str, srdf_path: str, packages_path: str):
+        super().__init__(urdf_path, srdf_path, packages_path)
+        
+    def get_verbose(self) -> str:
+        return super().getVerbose()
 
     def update_state(self, q: np.ndarray, qdot: np.ndarray) -> bool:
         return super().updateState(q, qdot)

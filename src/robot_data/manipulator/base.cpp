@@ -6,8 +6,7 @@ namespace RobotData
     {
         ManipulatorBase::ManipulatorBase(const std::string& urdf_path, 
                                          const std::string& srdf_path, 
-                                         const std::string& packages_path, 
-                                         const bool verbose)
+                                         const std::string& packages_path)
         {
             std::ifstream urdf_file(urdf_path);
             if (!urdf_file.good()) std::cout << "\033[1;31m" << "URDF file does not exist! : " << "\033[0m" << urdf_path << "\033[0m" << std::endl;
@@ -41,22 +40,25 @@ namespace RobotData
             g_.setZero(dof_);
             c_.setZero(dof_);
             NLE_.setZero(dof_);
+        }
 
-            if(verbose)
+        std::string ManipulatorBase::getVerbose() const
+        {
+            std::ostringstream oss;
+            oss << "Total nq = " << model_.nq << '\n'
+                << "Total nv = " << model_.nv << "\n\n";
+            oss << " id | name                 | nq | nv | idx_q | idx_v\n";
+            oss << "----+----------------------+----+----+-------+------\n";
+            for (pinocchio::JointIndex id = 1; id < model_.joints.size(); ++id)
             {
-                std::cout << "Total nq = " << model_.nq << '\n' << "Total nv = " << model_.nv << "\n\n";
-                std::cout << " id | name                 | nq | nv | idx_q | idx_v\n";
-                std::cout << "----+----------------------+----+----+-------+------\n";
-                for(pinocchio::JointIndex id = 1; id < model_.joints.size(); ++id)
-                {
-                    std::cout << std::setw(3)  << id << " | "
+                oss << std::setw(3)  << id << " | "
                     << std::setw(20) << model_.names[id] << " | "
                     << std::setw(2)  << model_.nqs[id]   << " | "
                     << std::setw(2)  << model_.nvs[id]   << " | "
                     << std::setw(5)  << model_.idx_qs[id]<< " | "
                     << std::setw(4)  << model_.idx_vs[id]<< '\n';
-                }
             }
+            return oss.str();
         }
 
         bool ManipulatorBase::updateState(const VectorXd& q, const VectorXd& qdot)

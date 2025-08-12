@@ -12,7 +12,6 @@ class MobileManipulatorBase(drc.MobileManipulatorBase):
                 packages_path: str,
                 joint_idx: JointIndex,
                 actuator_idx: ActuatorIndex,
-                verbose: bool = False,
                 ):
         self._mobile_kine_param = mobile_param
         self._joint_idx = joint_idx
@@ -23,8 +22,10 @@ class MobileManipulatorBase(drc.MobileManipulatorBase):
                          packages_path,
                          self._joint_idx.cpp(),
                          self._actuator_idx.cpp(),
-                         verbose,
                          )
+        
+    def get_verbose(self) -> str:
+        return super().getVerbose()
 
     def update_state(self,
                      q_virtual: np.ndarray,

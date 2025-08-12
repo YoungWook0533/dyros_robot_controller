@@ -1,6 +1,8 @@
 #pragma once
 #include "robot_data/type_define.h"
 #include <memory>
+#include <sstream>
+#include <iomanip>
 
 using namespace Eigen;
 
@@ -23,6 +25,8 @@ namespace RobotData
                  * @param param (RobotData::Mobile::KinematicParam) Kinematic parameter object containing drive type and geometry.
                 */
                 MobileBase(const KinematicParam& param);
+
+                virtual std::string getVerbose() const;
 
                 /**
                  * @brief Update internal mobile robot data.

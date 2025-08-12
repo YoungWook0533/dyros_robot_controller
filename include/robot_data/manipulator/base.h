@@ -33,11 +33,10 @@ namespace RobotData
             public:
                 ManipulatorBase(const std::string& urdf_path, 
                                 const std::string& srdf_path, 
-                                const std::string& packages_path, 
-                                const bool verbose);
+                                const std::string& packages_path);
 
                 virtual bool updateState(const VectorXd& q, const VectorXd& qdot);
-                
+                virtual std::string getVerbose() const;
                 // ================================ Compute Functions ================================
                 // Joint space 
                 virtual MatrixXd computeMassMatrix(const VectorXd& q);

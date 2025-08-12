@@ -9,6 +9,9 @@ class MobileBase(drc.MobileBase):
             raise TypeError("param must be a KinematicParam instance")
         self._param = param
         super().__init__(self._param.cpp())
+    
+    def get_verbose(self) -> str:
+        return super().getVerbose()
         
     def update_state(self, wheel_pos: np.ndarray, wheel_vel: np.ndarray) -> bool:
         return bool(super().updateState(np.asarray(wheel_pos), np.asarray(wheel_vel)))
