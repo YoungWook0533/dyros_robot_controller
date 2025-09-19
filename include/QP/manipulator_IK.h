@@ -18,8 +18,16 @@ namespace QP
             {
                 // decision variables
                 int qdot_start; 
+                int slack_q_min_start;
+                int slack_q_max_start;
+                int slack_sing_start;
+                int slack_sel_col_start;
 
                 int qdot_size;
+                int slack_q_min_size;
+                int slack_q_max_size;
+                int slack_sing_size;
+                int slack_sel_col_size;
 
                 // inequality
                 int con_q_min_start;

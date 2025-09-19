@@ -19,9 +19,21 @@ namespace QP
                 // decision variables
                 int qddot_start; 
                 int torque_start;
+                int slack_q_min_start;
+                int slack_q_max_start;
+                int slack_qdot_min_start;
+                int slack_qdot_max_start;
+                int slack_sing_start;
+                int slack_sel_col_start;
 
                 int qddot_size;
                 int torque_size;
+                int slack_q_min_size;
+                int slack_q_max_size;
+                int slack_qdot_min_size;
+                int slack_qdot_max_size;
+                int slack_sing_size;
+                int slack_sel_col_size;
                 
                 // equality
                 int con_dyn_start; // dynamics constraint
