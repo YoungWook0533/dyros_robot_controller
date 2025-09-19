@@ -9,8 +9,8 @@ namespace RobotController
         : robot_data_(robot_data)
         {
             dof_ = robot_data_->getDof();
-            Kp_task_ = VectorXd::Constant(6, 400);
-            Kv_task_ = VectorXd::Constant(6, 40);
+            Kp_task_ = VectorXd::Constant(6, 100);
+            Kv_task_ = VectorXd::Constant(6, 20);
             Kp_joint_ = VectorXd::Constant(dof_, 400);
             Kv_joint_ = VectorXd::Constant(dof_, 40);
     
@@ -111,7 +111,7 @@ namespace RobotController
     
             MatrixXd null_proj = MatrixXd::Identity(dof_, dof_) - J_pinv * J;
     
-            VectorXd qdot_desired = J_pinv * (Kp_task_.asDiagonal() * x_error + Kv_task_.asDiagonal() * xdot_error) + null_proj * null_qdot;
+            VectorXd qdot_desired = J_pinv * (Kp_task_.asDiagonal() * x_error + xdot_target) + null_proj * null_qdot;
             return qdot_desired;
         }
 
