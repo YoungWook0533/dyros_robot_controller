@@ -26,6 +26,13 @@ namespace RobotController
                                                         const double& current_time,
                                                         const double& init_time,
                                                         const double& duration);
+                virtual VectorXd moveJointVelocityCubic(const VectorXd& q_target,
+                                                        const VectorXd& qdot_target,
+                                                        const VectorXd& q_init,
+                                                        const VectorXd& qdot_init,
+                                                        const double& current_time,
+                                                        const double& init_time,
+                                                        const double& duration);
 
                 virtual VectorXd moveJointTorqueStep(const VectorXd& qddot_target);
                 virtual VectorXd moveJointTorqueStep(const VectorXd& q_target,

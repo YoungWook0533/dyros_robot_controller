@@ -57,6 +57,25 @@ namespace RobotController
             return q_desired;
         }
 
+        VectorXd ManipulatorBase::moveJointVelocityCubic(const VectorXd& q_target,
+                                                         const VectorXd& qdot_target,
+                                                         const VectorXd& q_init,
+                                                         const VectorXd& qdot_init,
+                                                         const double& current_time,
+                                                         const double& init_time,
+                                                         const double& duration)
+        {
+            VectorXd qdot_desired =  DyrosMath::cubicDotVector(current_time,
+                                                               init_time,
+                                                               init_time + duration,
+                                                               q_init,
+                                                               q_target,
+                                                               qdot_init,
+                                                               qdot_target);
+    
+            return qdot_desired;
+        }
+
         VectorXd ManipulatorBase::moveJointTorqueStep(const VectorXd& qddot_target)
         {
             return robot_data_->getMassMatrix() * qddot_target + robot_data_->getGravity();;
