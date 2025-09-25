@@ -8,15 +8,15 @@ It is designed to work seamlessly in both simulation and real-robot environments
 ## Key Features
 | ClearPath Husky                     | Summit XLS                      |DYROS PCV                    |
 | ----------------------------------- | ------------------------------- |---------------------------- |
-| ![husky_model](images/husky.gif)    | ![xls_model](images/xls.gif)    |![pcv_model](images/pcv.gif) |
+| ![husky_model](imgs/husky.gif)      | ![xls_model](imgs/xls.gif)      |![pcv_model](imgs/pcv.gif)   |
 
 | Franka FR3                     | Universal Robots 5e             |
 | ------------------------------ | ------------------------------- |
-| ![fr3_model](images/fr3.gif)   | ![xls_model](images/ur5.gif)    |
+| ![fr3_model](imgs/fr3.gif)     | ![xls_model](imgs/ur5.gif)      | 
 
 | Husky FR3                      | XLS FR3                         |
 | ------------------------------ | ------------------------------- |
-| Comming Soon                   || Comming Soon                   |
+| Comming Soon                   | Comming Soon                    |
 
 - **Mobile Robots**
   - Supports differential drive, mecanum, and caster wheel configurations  
