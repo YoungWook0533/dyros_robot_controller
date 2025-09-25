@@ -36,6 +36,24 @@ class ManipulatorControllerBase(drc.ManipulatorControllerBase):
                                               init_time,
                                               duration, 
                                               )
+        
+    def move_joint_velocity_cubic(self,
+                                  q_target: np.ndarray,
+                                  qdot_target: np.ndarray,
+                                  q_init: np.ndarray,
+                                  qdot_init: np.ndarray,
+                                  current_time: float,
+                                  init_time: float,
+                                  duration: float,
+                                  ) -> np.ndarray:
+        return super().moveJointVelocityCubic(q_target,
+                                              qdot_target,
+                                              q_init,
+                                              qdot_init,
+                                              current_time,
+                                              init_time,
+                                              duration, 
+                                              )
 
     # def move_joint_torque_step(self, q_target: np.ndarray, qdot_target: np.ndarray) -> np.ndarray:
     #     return super().moveJointTorqueStep(q_target, qdot_target)
