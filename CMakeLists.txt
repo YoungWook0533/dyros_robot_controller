@@ -20,74 +20,74 @@ include_directories(
   ${eigenpy_INCLUDE_DIRS}
 )
 
-include_directories(include)
-
-add_library(RobotData SHARED
-  src/robot_data/mobile/base.cpp
-  src/robot_data/manipulator/base.cpp
-  src/robot_data/mobile_manipulator/base.cpp
+include_directories(
+  ${PROJECT_SOURCE_DIR}/include
 )
 
-target_link_libraries(RobotData PUBLIC
+add_library(${PROJECT_NAME} SHARED 
+  src/mobile/robot_controller.cpp
+  src/mobile/robot_data.cpp
+  src/manipulator/robot_controller.cpp
+  src/manipulator/robot_data.cpp
+  src/mobile_manipulator/robot_controller.cpp
+  src/mobile_manipulator/robot_data.cpp
+)
+
+target_sources(${PROJECT_NAME} PRIVATE
+  src/manipulator/QP_ID.cpp
+  src/manipulator/QP_IK.cpp
+  src/mobile_manipulator/QP_ID.cpp
+  src/mobile_manipulator/QP_IK.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
   pinocchio::pinocchio
   rclcpp::rclcpp
-)
-
-add_library(QPController SHARED
-  src/QP/base.cpp
-  src/QP/manipulator_IK.cpp
-  src/QP/manipulator_ID.cpp
-  src/QP/mobile_manipulator_IK.cpp
-  src/QP/mobile_manipulator_ID.cpp
-)
-
-target_link_libraries(QPController PUBLIC
-  RobotData
   OsqpEigen::OsqpEigen
 )
 
-add_library(RobotController SHARED
-  src/robot_controller/mobile/base.cpp
-  src/robot_controller/manipulator/base.cpp
-  src/robot_controller/mobile_manipulator/base.cpp
-)
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_link_libraries(RobotController PUBLIC
-  RobotData
-  QPController
-)
 
 add_library(${PROJECT_NAME}_cpp_wrapper MODULE
   src/bindings.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_cpp_wrapper PUBLIC
-  RobotData
-  RobotController
+  ${PROJECT_NAME}
   Boost::python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}
   Python3::Module
   eigenpy::eigenpy
 )
 
 target_include_directories(${PROJECT_NAME}_cpp_wrapper PUBLIC
-  ${Python3_INCLUDE_DIRS})
+  ${Python3_INCLUDE_DIRS}
+)
 
 set_target_properties(${PROJECT_NAME}_cpp_wrapper PROPERTIES
   PREFIX ""
-  SUFFIX ".so")
-
-install(
-  DIRECTORY include/
-  DESTINATION include
+  SUFFIX ".so"
 )
 
 install(
-  TARGETS RobotData QPController RobotController
+  TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+  FILES_MATCHING
+    PATTERN "*.h"
 )
 
 install(TARGETS ${PROJECT_NAME}_cpp_wrapper
@@ -97,19 +97,8 @@ install(TARGETS ${PROJECT_NAME}_cpp_wrapper
 install(TARGETS ${PROJECT_NAME}_cpp_wrapper
   LIBRARY DESTINATION lib
 )
-
-ament_export_include_directories(include)
-ament_export_libraries(RobotData RobotController)
-ament_export_dependencies(
-  rclcpp
-  Eigen3
-  pinocchio
-  OsqpEigen
-)
-
-add_library(dyros_robot_controller::RobotData       ALIAS RobotData)
-add_library(dyros_robot_controller::RobotController ALIAS RobotController)
-ament_export_targets(export_${PROJECT_NAME})
-            
+          
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(Eigen3 rclcpp pinocchio OsqpEigen eigenpy)
 ament_python_install_package(${PROJECT_NAME})
 ament_package()

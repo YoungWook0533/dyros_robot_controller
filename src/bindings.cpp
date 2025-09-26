@@ -10,84 +10,79 @@
 #include <numpy/ndarrayobject.h>
 #include <numpy/arrayobject.h>
 
-#include "robot_data/type_define.h"
-#include "robot_data/mobile/base.h"
-#include "robot_data/manipulator/base.h"
-#include "robot_data/mobile_manipulator/base.h"
+#include "dyros_robot_controller/type_define.h"
+#include "dyros_robot_controller/mobile/robot_data.h"
+#include "dyros_robot_controller/manipulator/robot_data.h"
+#include "dyros_robot_controller/mobile_manipulator/robot_data.h"
 
-#include "robot_controller/mobile/base.h"
-#include "robot_controller/manipulator/base.h"
-#include "robot_controller/mobile_manipulator/base.h"
+#include "dyros_robot_controller/mobile/robot_controller.h"
+#include "dyros_robot_controller/manipulator/robot_controller.h"
+#include "dyros_robot_controller/mobile_manipulator/robot_controller.h"
 
-namespace bp    = boost::python;
-namespace RD_MO = RobotData::Mobile;
-namespace RD_MN = RobotData::Manipulator;
-namespace RD_MM = RobotData::MobileManipulator;
-namespace RC_MO = RobotController::Mobile;
-namespace RC_MN = RobotController::Manipulator;
-namespace RC_MM = RobotController::MobileManipulator;
+namespace bp = boost::python;
+using namespace drc;
 
-typedef RD_MO::MobileBase            RDMOBase;
-typedef RD_MN::ManipulatorBase       RDMNBase;
-typedef RD_MM::MobileManipulatorBase RDMMBase;
-typedef RC_MO::MobileBase            RCMOBase;
-typedef RC_MN::ManipulatorBase       RCMNBase;
-typedef RC_MM::MobileManipulatorBase RCMMBase;
+typedef Mobile::RobotData                  MO_RD;
+typedef Manipulator::RobotData             MN_RD;
+typedef MobileManipulator::RobotData       MM_RD;
+typedef Mobile::RobotController            MO_RC;
+typedef Manipulator::RobotController       MN_RC;
+typedef MobileManipulator::RobotController MM_RC;
 
 namespace
 {
-    bp::tuple RCMMBase_QPIK_tuple(RCMMBase& self, const VectorXd& xdot_target, const std::string& link_name)
+    bp::tuple MM_RC_QPIK_tuple(MM_RC& self, const VectorXd& xdot_target, const std::string& link_name)
     {
         VectorXd qdot_mobi, qdot_mani;
         self.QPIK(xdot_target, link_name, qdot_mobi, qdot_mani);
         return bp::make_tuple( qdot_mobi, qdot_mani );
     }
     
-    bp::tuple RCMMBase_QPIKStep_tuple(RCMMBase& self, const Affine3d& x_target, const VectorXd& xdot_target, const std::string& link_name)
+    bp::tuple MM_RC_QPIKStep_tuple(MM_RC& self, const Affine3d& x_target, const VectorXd& xdot_target, const std::string& link_name)
     {
         VectorXd qdot_mobi, qdot_mani;
         self.QPIKStep(x_target, xdot_target, link_name, qdot_mobi, qdot_mani);
         return bp::make_tuple( qdot_mobi, qdot_mani );
     }
     
-    bp::tuple RCMMBase_QPIKCubic_tuple(RCMMBase& self, 
-                                       const Affine3d& x_target,
-                                       const VectorXd& xdot_target,
-                                       const Affine3d& x_init,
-                                       const VectorXd& xdot_init,
-                                       const double& current_time,
-                                       const double& init_time,
-                                       const double& duration,
-                                       const std::string& link_name)
+    bp::tuple MM_RC_QPIKCubic_tuple(MM_RC& self, 
+                                    const Affine3d& x_target,
+                                    const VectorXd& xdot_target,
+                                    const Affine3d& x_init,
+                                    const VectorXd& xdot_init,
+                                    const double& current_time,
+                                    const double& init_time,
+                                    const double& duration,
+                                    const std::string& link_name)
     {
         VectorXd qdot_mobi, qdot_mani;
         self.QPIKCubic(x_target, xdot_target, x_init, xdot_init, current_time, init_time, duration, link_name, qdot_mobi, qdot_mani);
         return bp::make_tuple( qdot_mobi, qdot_mani );
     }
 
-    bp::tuple RCMMBase_QPID_tuple(RCMMBase& self, const VectorXd& xddot_target, const std::string& link_name)
+    bp::tuple MM_RC_QPID_tuple(MM_RC& self, const VectorXd& xddot_target, const std::string& link_name)
     {
         VectorXd qddot_mobi, torque_mani;
         self.QPID(xddot_target, link_name, qddot_mobi, torque_mani);
         return bp::make_tuple( qddot_mobi, torque_mani );
     }
     
-    bp::tuple RCMMBase_QPIDStep_tuple(RCMMBase& self, const Affine3d& x_target, const VectorXd& xdot_target, const std::string& link_name)
+    bp::tuple MM_RC_QPIDStep_tuple(MM_RC& self, const Affine3d& x_target, const VectorXd& xdot_target, const std::string& link_name)
     {
         VectorXd qddot_mobi, torque_mani;
         self.QPIDStep(x_target, xdot_target, link_name, qddot_mobi, torque_mani);
         return bp::make_tuple( qddot_mobi, torque_mani );
     }
     
-    bp::tuple RCMMBase_QPIDCubic_tuple(RCMMBase& self, 
-                                       const Affine3d& x_target,
-                                       const VectorXd& xdot_target,
-                                       const Affine3d& x_init,
-                                       const VectorXd& xdot_init,
-                                       const double& current_time,
-                                       const double& init_time,
-                                       const double& duration,
-                                       const std::string& link_name)
+    bp::tuple MM_RC_QPIDCubic_tuple(MM_RC& self, 
+                                    const Affine3d& x_target,
+                                    const VectorXd& xdot_target,
+                                    const Affine3d& x_init,
+                                    const VectorXd& xdot_init,
+                                    const double& current_time,
+                                    const double& init_time,
+                                    const double& duration,
+                                    const std::string& link_name)
     {
         VectorXd qddot_mobi, torque_mani;
         self.QPIDCubic(x_target, xdot_target, x_init, xdot_init, current_time, init_time, duration, link_name, qddot_mobi, torque_mani);
@@ -237,209 +232,209 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_cpp_wrapper)
     static Vec2dFromPython     _reg_vec2d_from_python;
     static Affine3dFromNumpy   _reg_affine3d_from_numpy;
 
-    bp::enum_<RD_MO::DriveType>("DriveType")
-        .value("Differential", RD_MO::DriveType::Differential)
-        .value("Mecanum",      RD_MO::DriveType::Mecanum)
-        .value("Caster",       RD_MO::DriveType::Caster)
+    bp::enum_<Mobile::DriveType>("DriveType")
+        .value("Differential", Mobile::DriveType::Differential)
+        .value("Mecanum",      Mobile::DriveType::Mecanum)
+        .value("Caster",       Mobile::DriveType::Caster)
         .export_values();
 
-    bp::class_<RD_MO::KinematicParam>("KinematicParam")
+    bp::class_<Mobile::KinematicParam>("KinematicParam")
         .def(bp::init<>())
-        .def_readwrite("type",                  &RD_MO::KinematicParam::type)
-        .def_readwrite("wheel_radius",          &RD_MO::KinematicParam::wheel_radius)
-        .def_readwrite("max_lin_speed",         &RD_MO::KinematicParam::max_lin_speed)
-        .def_readwrite("max_ang_speed",         &RD_MO::KinematicParam::max_ang_speed)
-        .def_readwrite("max_lin_acc",           &RD_MO::KinematicParam::max_lin_acc)
-        .def_readwrite("max_ang_acc",           &RD_MO::KinematicParam::max_ang_acc)
-        .def_readwrite("base_width",            &RD_MO::KinematicParam::base_width)
-        .def_readwrite("roller_angles",         &RD_MO::KinematicParam::roller_angles)
-        .def_readwrite("base2wheel_positions",  &RD_MO::KinematicParam::base2wheel_positions)
-        .def_readwrite("base2wheel_angles",     &RD_MO::KinematicParam::base2wheel_angles)
-        .def_readwrite("wheel_offset",          &RD_MO::KinematicParam::wheel_offset);
+        .def_readwrite("type",                  &Mobile::KinematicParam::type)
+        .def_readwrite("wheel_radius",          &Mobile::KinematicParam::wheel_radius)
+        .def_readwrite("max_lin_speed",         &Mobile::KinematicParam::max_lin_speed)
+        .def_readwrite("max_ang_speed",         &Mobile::KinematicParam::max_ang_speed)
+        .def_readwrite("max_lin_acc",           &Mobile::KinematicParam::max_lin_acc)
+        .def_readwrite("max_ang_acc",           &Mobile::KinematicParam::max_ang_acc)
+        .def_readwrite("base_width",            &Mobile::KinematicParam::base_width)
+        .def_readwrite("roller_angles",         &Mobile::KinematicParam::roller_angles)
+        .def_readwrite("base2wheel_positions",  &Mobile::KinematicParam::base2wheel_positions)
+        .def_readwrite("base2wheel_angles",     &Mobile::KinematicParam::base2wheel_angles)
+        .def_readwrite("wheel_offset",          &Mobile::KinematicParam::wheel_offset);
 
-    bp::class_<RD_MN::MinDistResult>("MinDistResult")
+    bp::class_<Manipulator::MinDistResult>("MinDistResult")
         .def(bp::init<>())
-        .def_readwrite("distance", &RD_MN::MinDistResult::distance)
-        .def_readwrite("grad",     &RD_MN::MinDistResult::grad)
-        .def_readwrite("grad_dot", &RD_MN::MinDistResult::grad_dot)
-        .def("setZero",            &RD_MN::MinDistResult::setZero);
+        .def_readwrite("distance", &Manipulator::MinDistResult::distance)
+        .def_readwrite("grad",     &Manipulator::MinDistResult::grad)
+        .def_readwrite("grad_dot", &Manipulator::MinDistResult::grad_dot)
+        .def("setZero",            &Manipulator::MinDistResult::setZero);
 
-    bp::class_<RD_MN::ManipulabilityResult>("ManipulabilityResult")
+    bp::class_<Manipulator::ManipulabilityResult>("ManipulabilityResult")
         .def(bp::init<>())
-        .def_readwrite("manipulability", &RD_MN::ManipulabilityResult::manipulability)
-        .def_readwrite("grad",           &RD_MN::ManipulabilityResult::grad)
-        .def_readwrite("grad_dot",       &RD_MN::ManipulabilityResult::grad_dot)
-        .def("setZero",                  &RD_MN::ManipulabilityResult::setZero);
+        .def_readwrite("manipulability", &Manipulator::ManipulabilityResult::manipulability)
+        .def_readwrite("grad",           &Manipulator::ManipulabilityResult::grad)
+        .def_readwrite("grad_dot",       &Manipulator::ManipulabilityResult::grad_dot)
+        .def("setZero",                  &Manipulator::ManipulabilityResult::setZero);
 
-    bp::class_<RD_MM::JointIndex>("JointIndex")
+    bp::class_<MobileManipulator::JointIndex>("JointIndex")
         .def(bp::init<>())
-        .def_readwrite("virtual_start", &RD_MM::JointIndex::virtual_start)
-        .def_readwrite("mani_start",    &RD_MM::JointIndex::mani_start)
-        .def_readwrite("mobi_start",    &RD_MM::JointIndex::mobi_start);
+        .def_readwrite("virtual_start", &MobileManipulator::JointIndex::virtual_start)
+        .def_readwrite("mani_start",    &MobileManipulator::JointIndex::mani_start)
+        .def_readwrite("mobi_start",    &MobileManipulator::JointIndex::mobi_start);
 
-    bp::class_<RD_MM::ActuatorIndex>("ActuatorIndex")
+    bp::class_<MobileManipulator::ActuatorIndex>("ActuatorIndex")
         .def(bp::init<>())
-        .def_readwrite("mani_start", &RD_MM::ActuatorIndex::mani_start)
-        .def_readwrite("mobi_start", &RD_MM::ActuatorIndex::mobi_start);
+        .def_readwrite("mani_start", &MobileManipulator::ActuatorIndex::mani_start)
+        .def_readwrite("mobi_start", &MobileManipulator::ActuatorIndex::mobi_start);
 
-    bp::class_<RDMOBase, boost::noncopyable>("MobileBase", bp::init<const RD_MO::KinematicParam&>())
-        .def("getVerbose",        &RDMOBase::getVerbose)
-        .def("updateState",       &RDMOBase::updateState)
-        .def("computeBaseVel",    &RDMOBase::computeBaseVel)
-        .def("computeFKJacobian", &RDMOBase::computeFKJacobian)
-        .def("getWheelNum",       &RDMOBase::getWheelNum, bp::return_value_policy<bp::return_by_value>())
-        .def("getKineParam",      &RDMOBase::getKineParam,     bp::return_internal_reference<>())
-        .def("getWheelPosition",  &RDMOBase::getWheelPosition, bp::return_internal_reference<>())
-        .def("getWheelVelocity",  &RDMOBase::getWheelVelocity, bp::return_internal_reference<>())
-        .def("getBaseVel",        &RDMOBase::getBaseVel,       bp::return_internal_reference<>())
-        .def("getFKJacobian",     &RDMOBase::getFKJacobian,    bp::return_internal_reference<>())
+    bp::class_<MO_RD, boost::noncopyable>("MobileRobotData", bp::init<const Mobile::KinematicParam&>())
+        .def("getVerbose",        &MO_RD::getVerbose)
+        .def("updateState",       &MO_RD::updateState)
+        .def("computeBaseVel",    &MO_RD::computeBaseVel)
+        .def("computeFKJacobian", &MO_RD::computeFKJacobian)
+        .def("getWheelNum",       &MO_RD::getWheelNum, bp::return_value_policy<bp::return_by_value>())
+        .def("getKineParam",      &MO_RD::getKineParam,     bp::return_internal_reference<>())
+        .def("getWheelPosition",  &MO_RD::getWheelPosition, bp::return_internal_reference<>())
+        .def("getWheelVelocity",  &MO_RD::getWheelVelocity, bp::return_internal_reference<>())
+        .def("getBaseVel",        &MO_RD::getBaseVel,       bp::return_internal_reference<>())
+        .def("getFKJacobian",     &MO_RD::getFKJacobian,    bp::return_internal_reference<>())
         ;
 
-    bp::class_<RDMNBase, boost::noncopyable>("ManipulatorBase", bp::init<const std::string&, const std::string&, const std::string&>())
-        .def("getVerbose",                   &RDMNBase::getVerbose)
-        .def("updateState",                  &RDMNBase::updateState)
-        .def("computeMassMatrix",            &RDMNBase::computeMassMatrix)
-        .def("computeGravity",               &RDMNBase::computeGravity)
-        .def("computeCoriolis",              &RDMNBase::computeCoriolis)
-        .def("computeNonlinearEffects",      &RDMNBase::computeNonlinearEffects)
-        .def("computePose",                  &RDMNBase::computePose)
-        .def("computeJacobian",              &RDMNBase::computeJacobian)
-        .def("computeJacobianTimeVariation", &RDMNBase::computeJacobianTimeVariation)
-        .def("computeVelocity",              &RDMNBase::computeVelocity)
-        .def("computeMinDistance",           &RDMNBase::computeMinDistance)
-        .def("computeManipulability",        &RDMNBase::computeManipulability)
-        .def("getDof",                       &RDMNBase::getDof)
-        .def("getJointPosition",             &RDMNBase::getJointPosition)
-        .def("getJointVelocity",             &RDMNBase::getJointVelocity)
-        .def("getJointPositionLimit",        &RDMNBase::getJointPositionLimit)
-        .def("getJointVelocityLimit",        &RDMNBase::getJointVelocityLimit)
-        .def("getMassMatrix",                &RDMNBase::getMassMatrix)
-        .def("getMassMatrixInv",             &RDMNBase::getMassMatrixInv)
-        .def("getCoriolis",                  &RDMNBase::getCoriolis)
-        .def("getGravity",                   &RDMNBase::getGravity)
-        .def("getNonlinearEffects",          &RDMNBase::getNonlinearEffects)
-        .def("getPose",                      &RDMNBase::getPose)
-        .def("getJacobian",                  &RDMNBase::getJacobian)
-        .def("getJacobianTimeVariation",     &RDMNBase::getJacobianTimeVariation)
-        .def("getVelocity",                  &RDMNBase::getVelocity)
-        .def("getMinDistance",               &RDMNBase::getMinDistance)
-        .def("getManipulability",            &RDMNBase::getManipulability);
+    bp::class_<MN_RD, boost::noncopyable>("ManipulatorRobotData", bp::init<const std::string&, const std::string&, const std::string&>())
+        .def("getVerbose",                   &MN_RD::getVerbose)
+        .def("updateState",                  &MN_RD::updateState)
+        .def("computeMassMatrix",            &MN_RD::computeMassMatrix)
+        .def("computeGravity",               &MN_RD::computeGravity)
+        .def("computeCoriolis",              &MN_RD::computeCoriolis)
+        .def("computeNonlinearEffects",      &MN_RD::computeNonlinearEffects)
+        .def("computePose",                  &MN_RD::computePose)
+        .def("computeJacobian",              &MN_RD::computeJacobian)
+        .def("computeJacobianTimeVariation", &MN_RD::computeJacobianTimeVariation)
+        .def("computeVelocity",              &MN_RD::computeVelocity)
+        .def("computeMinDistance",           &MN_RD::computeMinDistance)
+        .def("computeManipulability",        &MN_RD::computeManipulability)
+        .def("getDof",                       &MN_RD::getDof)
+        .def("getJointPosition",             &MN_RD::getJointPosition)
+        .def("getJointVelocity",             &MN_RD::getJointVelocity)
+        .def("getJointPositionLimit",        &MN_RD::getJointPositionLimit)
+        .def("getJointVelocityLimit",        &MN_RD::getJointVelocityLimit)
+        .def("getMassMatrix",                &MN_RD::getMassMatrix)
+        .def("getMassMatrixInv",             &MN_RD::getMassMatrixInv)
+        .def("getCoriolis",                  &MN_RD::getCoriolis)
+        .def("getGravity",                   &MN_RD::getGravity)
+        .def("getNonlinearEffects",          &MN_RD::getNonlinearEffects)
+        .def("getPose",                      &MN_RD::getPose)
+        .def("getJacobian",                  &MN_RD::getJacobian)
+        .def("getJacobianTimeVariation",     &MN_RD::getJacobianTimeVariation)
+        .def("getVelocity",                  &MN_RD::getVelocity)
+        .def("getMinDistance",               &MN_RD::getMinDistance)
+        .def("getManipulability",            &MN_RD::getManipulability);
 
-    typedef bool (RDMMBase::*Upd6)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&);
-    typedef MatrixXd (RDMMBase::*Mat3)(const VectorXd&, const VectorXd&, const VectorXd&);
-    typedef VectorXd (RDMMBase::*Vec3)(const VectorXd&, const VectorXd&, const VectorXd&);
-    typedef VectorXd (RDMMBase::*Vec6)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&);
-    typedef Affine3d (RDMMBase::*Aff4)(const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef MatrixXd (RDMMBase::*Mat4)(const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef MatrixXd (RDMMBase::*Mat7)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef VectorXd (RDMMBase::*Vec7)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef RobotData::Manipulator::MinDistResult (RDMMBase::*Min9)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const bool&, const bool&, const bool);
-    typedef RobotData::Manipulator::ManipulabilityResult (RDMMBase::*Man5)(const VectorXd&, const VectorXd&, const bool&, const bool&, const std::string&);
+    typedef bool (MM_RD::*Upd6)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&);
+    typedef MatrixXd (MM_RD::*Mat3)(const VectorXd&, const VectorXd&, const VectorXd&);
+    typedef VectorXd (MM_RD::*Vec3)(const VectorXd&, const VectorXd&, const VectorXd&);
+    typedef VectorXd (MM_RD::*Vec6)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&);
+    typedef Affine3d (MM_RD::*Aff4)(const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef MatrixXd (MM_RD::*Mat4)(const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef MatrixXd (MM_RD::*Mat7)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef VectorXd (MM_RD::*Vec7)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef Manipulator::MinDistResult (MM_RD::*Min9)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const bool&, const bool&, const bool);
+    typedef Manipulator::ManipulabilityResult (MM_RD::*Man5)(const VectorXd&, const VectorXd&, const bool&, const bool&, const std::string&);
 
-    bp::class_<RDMMBase, bp::bases<RDMNBase, RDMOBase>, boost::noncopyable>("MobileManipulatorBase", bp::init<const RD_MO::KinematicParam&, const std::string&, const std::string&, const std::string&, const RD_MM::JointIndex&, const RD_MM::ActuatorIndex&>())
-        .def("getVerbose",                                     &RDMMBase::getVerbose)
-        .def("updateState",                  static_cast<Upd6>(&RDMMBase::updateState))
-        .def("computeMassMatrix",            static_cast<Mat3>(&RDMMBase::computeMassMatrix))
-        .def("computeGravity",               static_cast<Vec3>(&RDMMBase::computeGravity))
-        .def("computeCoriolis",              static_cast<Vec6>(&RDMMBase::computeCoriolis))
-        .def("computeNonlinearEffects",      static_cast<Vec6>(&RDMMBase::computeNonlinearEffects))
-        .def("computeMassMatrixActuated",                      &RDMMBase::computeMassMatrixActuated)
-        .def("computeGravityActuated",                         &RDMMBase::computeGravityActuated)
-        .def("computeCoriolisActuated",                        &RDMMBase::computeCoriolisActuated)
-        .def("computeNonlinearEffectsActuated",                &RDMMBase::computeNonlinearEffectsActuated)
-        .def("computePose",                  static_cast<Aff4>(&RDMMBase::computePose))
-        .def("computeJacobian",              static_cast<Mat4>(&RDMMBase::computeJacobian))
-        .def("computeJacobianTimeVariation", static_cast<Mat7>(&RDMMBase::computeJacobianTimeVariation))
-        .def("computeVelocity",              static_cast<Vec7>(&RDMMBase::computeVelocity))
-        .def("computeMinDistance",                        Min9(&RDMMBase::computeMinDistance))
-        .def("computeSelectionMatrix",                         &RDMMBase::computeSelectionMatrix)
-        .def("computeJacobianActuated",                        &RDMMBase::computeJacobianActuated)
-        .def("computeJacobianTimeVariationActuated",           &RDMMBase::computeJacobianTimeVariationActuated)
-        .def("computeManipulability",                     Man5(&RDMMBase::computeManipulability))
-        .def("computeMobileFKJacobian",                        &RDMMBase::computeMobileFKJacobian)
-        .def("computeMobileBaseVel",                           &RDMMBase::computeMobileBaseVel)
-        .def("getActuatordDof",                                &RDMMBase::getActuatordDof)
-        .def("getManipulatorDof",                              &RDMMBase::getManipulatorDof)
-        .def("getMobileDof",                                   &RDMMBase::getMobileDof)
-        .def("getJointIndex",                                  &RDMMBase::getJointIndex)
-        .def("getActuatorIndex",                               &RDMMBase::getActuatorIndex)
-        .def("getMobileJointPosition",                         &RDMMBase::getMobileJointPosition)
-        .def("getVirtualJointPosition",                        &RDMMBase::getVirtualJointPosition)
-        .def("getManiJointPosition",                           &RDMMBase::getManiJointPosition)
-        .def("getJointVelocityActuated",                       &RDMMBase::getJointVelocityActuated)
-        .def("getMobileJointVelocity",                         &RDMMBase::getMobileJointVelocity)
-        .def("getVirtualJointVelocity",                        &RDMMBase::getVirtualJointVelocity)
-        .def("getManiJointVelocity",                           &RDMMBase::getManiJointVelocity)
-        .def("getJointPositionActuated",                       &RDMMBase::getJointPositionActuated)
-        .def("getMassMatrixActuated",                          &RDMMBase::getMassMatrixActuated)
-        .def("getMassMatrixActuatedInv",                       &RDMMBase::getMassMatrixActuatedInv)
-        .def("getGravityActuated",                             &RDMMBase::getGravityActuated)
-        .def("getCoriolisActuated",                            &RDMMBase::getCoriolisActuated)
-        .def("getNonlinearEffectsActuated",                    &RDMMBase::getNonlinearEffectsActuated)
-        .def("getJacobianActuated",                            &RDMMBase::getJacobianActuated)
-        .def("getJacobianActuatedTimeVariation",               &RDMMBase::getJacobianActuatedTimeVariation)
-        .def("getSelectionMatrix",                             &RDMMBase::getSelectionMatrix)
-        .def("getManipulability",                              &RDMMBase::getManipulability)
-        .def("getMobileFKJacobian",                            &RDMMBase::getMobileFKJacobian)
-        .def("getMobileBaseVel",                               &RDMMBase::getMobileBaseVel)
+    bp::class_<MM_RD, bp::bases<MN_RD, MO_RD>, boost::noncopyable>("MobileManipulatorRobotData", bp::init<const Mobile::KinematicParam&, const std::string&, const std::string&, const std::string&, const MobileManipulator::JointIndex&, const MobileManipulator::ActuatorIndex&>())
+        .def("getVerbose",                                     &MM_RD::getVerbose)
+        .def("updateState",                  static_cast<Upd6>(&MM_RD::updateState))
+        .def("computeMassMatrix",            static_cast<Mat3>(&MM_RD::computeMassMatrix))
+        .def("computeGravity",               static_cast<Vec3>(&MM_RD::computeGravity))
+        .def("computeCoriolis",              static_cast<Vec6>(&MM_RD::computeCoriolis))
+        .def("computeNonlinearEffects",      static_cast<Vec6>(&MM_RD::computeNonlinearEffects))
+        .def("computeMassMatrixActuated",                      &MM_RD::computeMassMatrixActuated)
+        .def("computeGravityActuated",                         &MM_RD::computeGravityActuated)
+        .def("computeCoriolisActuated",                        &MM_RD::computeCoriolisActuated)
+        .def("computeNonlinearEffectsActuated",                &MM_RD::computeNonlinearEffectsActuated)
+        .def("computePose",                  static_cast<Aff4>(&MM_RD::computePose))
+        .def("computeJacobian",              static_cast<Mat4>(&MM_RD::computeJacobian))
+        .def("computeJacobianTimeVariation", static_cast<Mat7>(&MM_RD::computeJacobianTimeVariation))
+        .def("computeVelocity",              static_cast<Vec7>(&MM_RD::computeVelocity))
+        .def("computeMinDistance",                        Min9(&MM_RD::computeMinDistance))
+        .def("computeSelectionMatrix",                         &MM_RD::computeSelectionMatrix)
+        .def("computeJacobianActuated",                        &MM_RD::computeJacobianActuated)
+        .def("computeJacobianTimeVariationActuated",           &MM_RD::computeJacobianTimeVariationActuated)
+        .def("computeManipulability",                     Man5(&MM_RD::computeManipulability))
+        .def("computeMobileFKJacobian",                        &MM_RD::computeMobileFKJacobian)
+        .def("computeMobileBaseVel",                           &MM_RD::computeMobileBaseVel)
+        .def("getActuatordDof",                                &MM_RD::getActuatordDof)
+        .def("getManipulatorDof",                              &MM_RD::getManipulatorDof)
+        .def("getMobileDof",                                   &MM_RD::getMobileDof)
+        .def("getJointIndex",                                  &MM_RD::getJointIndex)
+        .def("getActuatorIndex",                               &MM_RD::getActuatorIndex)
+        .def("getMobileJointPosition",                         &MM_RD::getMobileJointPosition)
+        .def("getVirtualJointPosition",                        &MM_RD::getVirtualJointPosition)
+        .def("getManiJointPosition",                           &MM_RD::getManiJointPosition)
+        .def("getJointVelocityActuated",                       &MM_RD::getJointVelocityActuated)
+        .def("getMobileJointVelocity",                         &MM_RD::getMobileJointVelocity)
+        .def("getVirtualJointVelocity",                        &MM_RD::getVirtualJointVelocity)
+        .def("getManiJointVelocity",                           &MM_RD::getManiJointVelocity)
+        .def("getJointPositionActuated",                       &MM_RD::getJointPositionActuated)
+        .def("getMassMatrixActuated",                          &MM_RD::getMassMatrixActuated)
+        .def("getMassMatrixActuatedInv",                       &MM_RD::getMassMatrixActuatedInv)
+        .def("getGravityActuated",                             &MM_RD::getGravityActuated)
+        .def("getCoriolisActuated",                            &MM_RD::getCoriolisActuated)
+        .def("getNonlinearEffectsActuated",                    &MM_RD::getNonlinearEffectsActuated)
+        .def("getJacobianActuated",                            &MM_RD::getJacobianActuated)
+        .def("getJacobianActuatedTimeVariation",               &MM_RD::getJacobianActuatedTimeVariation)
+        .def("getSelectionMatrix",                             &MM_RD::getSelectionMatrix)
+        .def("getManipulability",                              &MM_RD::getManipulability)
+        .def("getMobileFKJacobian",                            &MM_RD::getMobileFKJacobian)
+        .def("getMobileBaseVel",                               &MM_RD::getMobileBaseVel)
         ;
 
-    bp::class_<RCMOBase, boost::noncopyable >("MobileControllerBase", bp::init<const double&, std::shared_ptr< RD_MO::MobileBase > >())
-        .def("computeWheelVel",   &RCMOBase::computeWheelVel)
-        .def("computeIKJacobian", &RCMOBase::computeIKJacobian)
-        .def("VelocityCommand",   &RCMOBase::VelocityCommand);
+    bp::class_<MO_RC, boost::noncopyable >("MobileRobotController", bp::init<const double&, std::shared_ptr< MO_RD > >())
+        .def("computeWheelVel",   &MO_RC::computeWheelVel)
+        .def("computeIKJacobian", &MO_RC::computeIKJacobian)
+        .def("VelocityCommand",   &MO_RC::VelocityCommand);
     
-    typedef VectorXd (RCMNBase::*CLIKStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*CLIKStep2)(const Affine3d&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*CLIKCub1)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*CLIKCub2)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSF1)(const VectorXd&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSF2)(const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSFStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSFStep2)(const Affine3d&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSFCub1)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const VectorXd&, const std::string&);
-    typedef VectorXd (RCMNBase::*OSFCub2)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const std::string&);
+    typedef VectorXd (MN_RC::*CLIKStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*CLIKStep2)(const Affine3d&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*CLIKCub1)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*CLIKCub2)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const std::string&);
+    typedef VectorXd (MN_RC::*OSF1)(const VectorXd&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*OSF2)(const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*OSFStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*OSFStep2)(const Affine3d&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*OSFCub1)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*OSFCub2)(const Affine3d&, const VectorXd&, const Affine3d&, const VectorXd&, const double&, const double&, const double&, const std::string&);
 
-    bp::class_<RCMNBase, boost::noncopyable >("ManipulatorControllerBase", bp::init<const double&, std::shared_ptr<RD_MN::ManipulatorBase>>())
-        .def("setJointGain",                                                                               &RCMNBase::setJointGain)
-        .def("setTaskGain",                                                                                &RCMNBase::setTaskGain)
-        .def("moveJointPositionCubic",                                                                     &RCMNBase::moveJointPositionCubic)
-        .def("moveJointVelocityCubic",                                                                     &RCMNBase::moveJointVelocityCubic)
-        .def("moveJointTorqueStep",                   static_cast<VectorXd (RCMNBase::*)(const VectorXd&)>(&RCMNBase::moveJointTorqueStep))
-        .def("moveJointTorqueStep",  static_cast<VectorXd (RCMNBase::*)(const VectorXd&, const VectorXd&)>(&RCMNBase::moveJointTorqueStep))
-        .def("moveJointTorqueCubic",                                                                       &RCMNBase::moveJointTorqueCubic)
-        .def("CLIKStep",                                                            static_cast<CLIKStep1>(&RCMNBase::CLIKStep))
-        .def("CLIKStep",                                                            static_cast<CLIKStep2>(&RCMNBase::CLIKStep))
-        .def("CLIKCubic",                                                            static_cast<CLIKCub1>(&RCMNBase::CLIKCubic))
-        .def("CLIKCubic",                                                            static_cast<CLIKCub2>(&RCMNBase::CLIKCubic))
-        .def("OSF",                                                                      static_cast<OSF1>(&RCMNBase::OSF))
-        .def("OSF",                                                                      static_cast<OSF2>(&RCMNBase::OSF))
-        .def("OSFStep",                                                              static_cast<OSFStep1>(&RCMNBase::OSFStep))
-        .def("OSFStep",                                                              static_cast<OSFStep2>(&RCMNBase::OSFStep))
-        .def("OSFCubic",                                                              static_cast<OSFCub1>(&RCMNBase::OSFCubic))
-        .def("OSFCubic",                                                              static_cast<OSFCub2>(&RCMNBase::OSFCubic))
-        .def("QPIK",                                                                                       &RCMNBase::QPIK)
-        .def("QPIKStep",                                                                                   &RCMNBase::QPIKStep)
-        .def("QPIKCubic",                                                                                  &RCMNBase::QPIKCubic)
-        .def("QPID",                                                                                       &RCMNBase::QPID)
-        .def("QPIDStep",                                                                                   &RCMNBase::QPIDStep)
-        .def("QPIDCubic",                                                                                  &RCMNBase::QPIDCubic)
+    bp::class_<MN_RC, boost::noncopyable >("ManipulatorRobotController", bp::init<const double&, std::shared_ptr<MN_RD>>())
+        .def("setJointGain",                                                                               &MN_RC::setJointGain)
+        .def("setTaskGain",                                                                                &MN_RC::setTaskGain)
+        .def("moveJointPositionCubic",                                                                     &MN_RC::moveJointPositionCubic)
+        .def("moveJointVelocityCubic",                                                                     &MN_RC::moveJointVelocityCubic)
+        .def("moveJointTorqueStep",                      static_cast<VectorXd (MN_RC::*)(const VectorXd&)>(&MN_RC::moveJointTorqueStep))
+        .def("moveJointTorqueStep",     static_cast<VectorXd (MN_RC::*)(const VectorXd&, const VectorXd&)>(&MN_RC::moveJointTorqueStep))
+        .def("moveJointTorqueCubic",                                                                       &MN_RC::moveJointTorqueCubic)
+        .def("CLIKStep",                                                            static_cast<CLIKStep1>(&MN_RC::CLIKStep))
+        .def("CLIKStep",                                                            static_cast<CLIKStep2>(&MN_RC::CLIKStep))
+        .def("CLIKCubic",                                                            static_cast<CLIKCub1>(&MN_RC::CLIKCubic))
+        .def("CLIKCubic",                                                            static_cast<CLIKCub2>(&MN_RC::CLIKCubic))
+        .def("OSF",                                                                      static_cast<OSF1>(&MN_RC::OSF))
+        .def("OSF",                                                                      static_cast<OSF2>(&MN_RC::OSF))
+        .def("OSFStep",                                                              static_cast<OSFStep1>(&MN_RC::OSFStep))
+        .def("OSFStep",                                                              static_cast<OSFStep2>(&MN_RC::OSFStep))
+        .def("OSFCubic",                                                              static_cast<OSFCub1>(&MN_RC::OSFCubic))
+        .def("OSFCubic",                                                              static_cast<OSFCub2>(&MN_RC::OSFCubic))
+        .def("QPIK",                                                                                       &MN_RC::QPIK)
+        .def("QPIKStep",                                                                                   &MN_RC::QPIKStep)
+        .def("QPIKCubic",                                                                                  &MN_RC::QPIKCubic)
+        .def("QPID",                                                                                       &MN_RC::QPID)
+        .def("QPIDStep",                                                                                   &MN_RC::QPIDStep)
+        .def("QPIDCubic",                                                                                  &MN_RC::QPIDCubic)
         ;
 
-    typedef VectorXd (RCMNBase::*CLIKStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
+    typedef VectorXd (MN_RC::*CLIKStep1)(const Affine3d&, const VectorXd&, const VectorXd&, const std::string&);
 
-    bp::class_<RCMMBase, boost::noncopyable>("MobileManipulatorControllerBase", bp::init<const double&, std::shared_ptr<RD_MM::MobileManipulatorBase>>())
-        .def("setManipulatorJointGain",                                                                                &RCMMBase::setManipulatorJointGain)
-        .def("setTaskGain",                                                                                            &RCMMBase::setTaskGain)
-        .def("moveManipulatorJointPositionCubic",                                                                      &RCMMBase::moveManipulatorJointPositionCubic)
-        .def("moveManipulatorJointTorqueStep",                     static_cast<VectorXd(RCMMBase::*)(const VectorXd&)>(&RCMMBase::moveManipulatorJointTorqueStep))
-        .def("moveManipulatorJointTorqueStep",    static_cast<VectorXd(RCMMBase::*)(const VectorXd&, const VectorXd&)>(&RCMMBase::moveManipulatorJointTorqueStep))
-        .def("moveManipulatorJointTorqueCubic",                                                                        &RCMMBase::moveManipulatorJointTorqueCubic)
-        .def("QPIK",                                                                                                   &RCMMBase_QPIK_tuple)
-        .def("QPIKStep",                                                                                               &RCMMBase_QPIKStep_tuple)
-        .def("QPIKCubic",                                                                                              &RCMMBase_QPIKCubic_tuple)
-        .def("QPID",                                                                                                   &RCMMBase_QPID_tuple)
-        .def("QPIDStep",                                                                                               &RCMMBase_QPIDStep_tuple)
-        .def("QPIDCubic",                                                                                              &RCMMBase_QPIDCubic_tuple)
+    bp::class_<MM_RC, boost::noncopyable>("MobileManipulatorRobotController", bp::init<const double&, std::shared_ptr<MM_RD>>())
+        .def("setManipulatorJointGain",                                                                                &MM_RC::setManipulatorJointGain)
+        .def("setTaskGain",                                                                                            &MM_RC::setTaskGain)
+        .def("moveManipulatorJointPositionCubic",                                                                      &MM_RC::moveManipulatorJointPositionCubic)
+        .def("moveManipulatorJointTorqueStep",                        static_cast<VectorXd(MM_RC::*)(const VectorXd&)>(&MM_RC::moveManipulatorJointTorqueStep))
+        .def("moveManipulatorJointTorqueStep",       static_cast<VectorXd(MM_RC::*)(const VectorXd&, const VectorXd&)>(&MM_RC::moveManipulatorJointTorqueStep))
+        .def("moveManipulatorJointTorqueCubic",                                                                        &MM_RC::moveManipulatorJointTorqueCubic)
+        .def("QPIK",                                                                                                   &MM_RC_QPIK_tuple)
+        .def("QPIKStep",                                                                                               &MM_RC_QPIKStep_tuple)
+        .def("QPIKCubic",                                                                                              &MM_RC_QPIKCubic_tuple)
+        .def("QPID",                                                                                                   &MM_RC_QPID_tuple)
+        .def("QPIDStep",                                                                                               &MM_RC_QPIDStep_tuple)
+        .def("QPIDCubic",                                                                                              &MM_RC_QPIDCubic_tuple)
         ;
 }
