@@ -16,6 +16,7 @@ namespace drc
         class RobotController
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 /**
                  * @brief Constructor.
                  *

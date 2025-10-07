@@ -35,6 +35,7 @@ namespace drc
         class RobotData : public Manipulator::RobotData, public Mobile::RobotData
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 RobotData(const Mobile::KinematicParam& mobile_param,
                           const std::string& urdf_path,
                           const std::string& srdf_path, 

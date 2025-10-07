@@ -20,6 +20,7 @@ namespace drc
         class RobotData
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 /**
                  * @brief Constructor with kinematic parameters.
                  * @param param (RobotData::Mobile::KinematicParam) Kinematic parameter object containing drive type and geometry.

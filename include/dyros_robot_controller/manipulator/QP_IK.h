@@ -10,6 +10,7 @@ namespace drc
         class QPIK : public QP::QPBase
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 QPIK(std::shared_ptr<Manipulator::RobotData> robot_data);
                 void setDesiredTaskVel(const VectorXd &xdot_desired, const std::string &link_name);
                 bool getOptJointVel(VectorXd &opt_qdot, QP::TimeDuration &time_status);

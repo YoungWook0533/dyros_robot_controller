@@ -10,6 +10,7 @@ namespace drc
         class QPID : public QP::QPBase
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 QPID(std::shared_ptr<Manipulator::RobotData> robot_data);
                 void setDesiredTaskAcc(const VectorXd &xddot_desired, const std::string &link_name);
                 bool getOptJoint(VectorXd &opt_qddot, VectorXd &opt_torque, QP::TimeDuration &time_status);

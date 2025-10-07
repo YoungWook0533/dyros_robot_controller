@@ -13,6 +13,7 @@ namespace drc
         class RobotController
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 RobotController(const double& dt,
                                 std::shared_ptr<MobileManipulator::RobotData> robot_data);
                 

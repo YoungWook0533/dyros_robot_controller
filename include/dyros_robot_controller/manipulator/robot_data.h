@@ -31,6 +31,7 @@ namespace drc
         class RobotData
         {
             public:
+                EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 RobotData(const std::string& urdf_path, 
                           const std::string& srdf_path, 
                           const std::string& packages_path);
