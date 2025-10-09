@@ -116,8 +116,8 @@ namespace drc
             
                     // settings
                     solver.settings()->setWarmStart(false);
-                    solver.settings()->getSettings()->eps_abs = 1e-4;
-                    solver.settings()->getSettings()->eps_rel = 1e-5;
+                    // solver.settings()->getSettings()->eps_abs = 1e-4;
+                    // solver.settings()->getSettings()->eps_rel = 1e-5;
                     solver.settings()->getSettings()->verbose = false;
             
                     // set the initial data of the QP solver
