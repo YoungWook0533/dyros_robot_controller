@@ -16,8 +16,7 @@ class FR3Controller:
 
         # Initialize robot model and controller (Dyros Robot Controller)
         self.robot_data = RobotData(urdf_path=urdf_file_path,
-                                    srdf_path=srdf_file_path,
-                                    packages_path="None")
+                                    srdf_path=srdf_file_path)
         self.robot_controller = RobotController(dt=self.dt,
                                                 robot_data=self.robot_data)
         

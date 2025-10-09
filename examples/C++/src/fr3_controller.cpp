@@ -12,7 +12,7 @@ FR3Controller::FR3Controller(const double dt)
   const std::string srdf = std::string(ROBOTS_DIRECTORY) + "/fr3/" + "fr3.srdf";
 
   // Initialize robot model and controller (Dyros Robot Controller)
-  robot_data_ = std::make_shared<drc::Manipulator::RobotData>(urdf, srdf, "None");
+  robot_data_ = std::make_shared<drc::Manipulator::RobotData>(urdf, srdf);
   robot_controller_ = std::make_shared<drc::Manipulator::RobotController>(dt_, robot_data_);
 
   // Number of degrees of freedom
