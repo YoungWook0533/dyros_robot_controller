@@ -1,6 +1,6 @@
 from typing import Tuple
 import numpy as np
-from dyros_robot_controller import KinematicParam, JointIndex, ActuatorIndex
+from drc import KinematicParam, JointIndex, ActuatorIndex
 import dyros_robot_controller_cpp_wrapper as drc
 
 

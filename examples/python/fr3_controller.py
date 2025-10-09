@@ -2,8 +2,8 @@ import os
 import numpy as np
 from pynput import keyboard     # Global keyboard listener
 from typing import Dict
-from dyros_robot_controller.manipulator.robot_data import RobotData
-from dyros_robot_controller.manipulator.robot_controller import RobotController
+from drc.manipulator.robot_data import RobotData
+from drc.manipulator.robot_controller import RobotController
 
 class FR3Controller:
     def __init__(self, dt: float):

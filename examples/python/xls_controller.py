@@ -2,9 +2,9 @@ import threading
 import numpy as np
 from pynput import keyboard     # Global keyboard listener
 from typing import Dict
-from dyros_robot_controller import KinematicParam, DriveType
-from dyros_robot_controller.mobile import RobotData
-from dyros_robot_controller.mobile import RobotController
+from drc import KinematicParam, DriveType
+from drc.mobile import RobotData
+from drc.mobile import RobotController
 
 class XLSController:
     def __init__(self, dt: float):

@@ -100,5 +100,5 @@ install(TARGETS ${PROJECT_NAME}_cpp_wrapper
           
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(Eigen3 rclcpp pinocchio OsqpEigen eigenpy)
-ament_python_install_package(${PROJECT_NAME})
+ament_python_install_package(drc)
 ament_package()
