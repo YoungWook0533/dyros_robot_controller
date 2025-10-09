@@ -16,8 +16,13 @@ namespace drc
                 
                 virtual void setJointGain(const VectorXd& Kp, 
                                           const VectorXd& Kv);
+                virtual void setJointKpGain(const VectorXd& Kp);
+                virtual void setJointKvGain(const VectorXd& Kv);
                 virtual void setTaskGain(const VectorXd& Kp, 
                                          const VectorXd& Kv);
+                virtual void setTaskKpGain(const VectorXd& Kp);
+                virtual void setTaskKvGain(const VectorXd& Kv);
+                
                 
                 // ================================ Joint space Functions ================================
                 virtual VectorXd moveJointPositionCubic(const VectorXd& q_target,

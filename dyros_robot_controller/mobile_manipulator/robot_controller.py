@@ -14,8 +14,20 @@ class RobotController(drc.MobileManipulatorRobotController):
     def set_manipulator_joint_gain(self, kp: np.ndarray, kv: np.ndarray):
         super().setManipulatorJointGain(kp, kv)
 
+    def set_manipulator_joint_kp_gain(self, kp: np.ndarray):
+        super().setManipulatorJointKpGain(kp)
+        
+    def set_manipulator_joint_kv_gain(self, kv: np.ndarray):
+        super().setManipulatorJointKvGain(kv)
+
     def set_task_gain(self, kp: np.ndarray, kv: np.ndarray):
         super().setTaskGain(kp, kv)
+        
+    def set_task_kp_gain(self, kp: np.ndarray):
+        super().setTaskKpGain(kp)
+        
+    def set_task_kv_gain(self, kv: np.ndarray):
+        super().setTaskKpGain(kv)
 
     def move_manipulator_joint_position_cubic(self,
                                               q_mani_target: np.ndarray,

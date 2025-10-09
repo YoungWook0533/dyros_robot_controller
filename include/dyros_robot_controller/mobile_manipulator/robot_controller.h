@@ -19,8 +19,12 @@ namespace drc
                 
                 virtual void setManipulatorJointGain(const VectorXd& Kp, 
                                                      const VectorXd& Kv);
+                virtual void setManipulatorJointKpGain(const VectorXd& Kp);
+                virtual void setManipulatorJointKvGain(const VectorXd& Kv);
                 virtual void setTaskGain(const VectorXd& Kp, 
                                          const VectorXd& Kv);
+                virtual void setTaskKpGain(const VectorXd& Kp);
+                virtual void setTaskKvGain(const VectorXd& Kv);
 
                 virtual VectorXd moveManipulatorJointPositionCubic(const VectorXd& q_mani_target,
                                                                    const VectorXd& qdot_mani_target,

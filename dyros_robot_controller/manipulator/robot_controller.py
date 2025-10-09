@@ -13,9 +13,21 @@ class RobotController(drc.ManipulatorRobotController):
 
     def set_joint_gain(self, kp: np.ndarray, kv: np.ndarray):
         super().setJointGain(kp, kv)
+        
+    def set_joint_kp_gain(self, kp: np.ndarray):
+        super().setJointKpGain(kp)
+        
+    def set_joint_kv_gain(self, kv: np.ndarray):
+        super().setJointKvGain(kv)
 
     def set_task_gain(self, kp: np.ndarray, kv: np.ndarray):
         super().setTaskGain(kp, kv)
+        
+    def set_task_kp_gain(self, kp: np.ndarray):
+        super().setTaskKpGain(kp)
+        
+    def set_task_kv_gain(self, kv: np.ndarray):
+        super().setTaskKpGain(kv)
 
     # ================================ Joint space Functions ================================
     def move_joint_position_cubic(self,

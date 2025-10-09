@@ -27,6 +27,24 @@ namespace drc
             Kp_joint_ = Kp;
             Kv_joint_ = Kv;
         }
+
+        void RobotController::setJointKpGain(const VectorXd& Kp)
+        {
+            if (Kp.size() != dof_ )
+            {
+                throw std::runtime_error("Kp must be of size dof_.");
+            }
+            Kp_joint_ = Kp;
+        }
+
+        void RobotController::setJointKvGain(const VectorXd& Kv)
+        {
+            if (Kv.size() != dof_ )
+            {
+                throw std::runtime_error("Kv must be of size dof_.");
+            }
+            Kv_joint_ = Kv;
+        }
     
         void RobotController::setTaskGain(const VectorXd& Kp, const VectorXd& Kv)
         {
@@ -35,6 +53,24 @@ namespace drc
                 throw std::runtime_error("Kp and Kv must be of size 6.");
             }
             Kp_task_ = Kp;
+            Kv_task_ = Kv;
+        }
+
+        void RobotController::setTaskKpGain(const VectorXd& Kp)
+        {
+            if (Kp.size() != 6)
+            {
+                throw std::runtime_error("Kp must be of size 6.");
+            }
+            Kp_task_ = Kp;
+        }
+
+        void RobotController::setTaskKvGain(const VectorXd& Kv)
+        {
+            if (Kv.size() != 6)
+            {
+                throw std::runtime_error("Kv must be of size 6.");
+            }
             Kv_task_ = Kv;
         }
     
