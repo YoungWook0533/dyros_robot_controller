@@ -4,10 +4,6 @@ namespace drc
 {
     namespace Manipulator
     {
-        RobotData::RobotData(const std::string& urdf_path,
-                             const std::string& packages_path)
-        : RobotData(std::move(urdf_path), /*srdf*/"", packages_path) {}
-
         RobotData::RobotData(const std::string& urdf_path, 
                              const std::string& srdf_path, 
                              const std::string& packages_path)

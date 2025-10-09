@@ -8,12 +8,6 @@ namespace drc
                              const JointIndex& joint_idx,
                              const ActuatorIndex& actuator_idx,
                              const std::string& urdf_path,
-                             const std::string& packages_path)
-        : RobotData(mobile_param, joint_idx, actuator_idx, urdf_path, /*srdf*/"", packages_path) {}
-        RobotData::RobotData(const Mobile::KinematicParam& mobile_param,
-                             const JointIndex& joint_idx,
-                             const ActuatorIndex& actuator_idx,
-                             const std::string& urdf_path,
                              const std::string& srdf_path, 
                              const std::string& packages_path)
         : Mobile::RobotData(mobile_param), 

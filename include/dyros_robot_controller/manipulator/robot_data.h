@@ -34,9 +34,7 @@ namespace drc
             public:
                 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 RobotData(const std::string& urdf_path, 
-                          const std::string& packages_path="");
-                RobotData(const std::string& urdf_path, 
-                          const std::string& srdf_path, 
+                          const std::string& srdf_path="", 
                           const std::string& packages_path="");
 
                 virtual bool updateState(const VectorXd& q, const VectorXd& qdot);

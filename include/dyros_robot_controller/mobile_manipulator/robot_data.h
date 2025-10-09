@@ -39,12 +39,7 @@ namespace drc
                           const JointIndex& joint_idx,
                           const ActuatorIndex& actuator_idx,
                           const std::string& urdf_path,
-                          const std::string& packages_path="");
-                RobotData(const Mobile::KinematicParam& mobile_param,
-                          const JointIndex& joint_idx,
-                          const ActuatorIndex& actuator_idx,
-                          const std::string& urdf_path,
-                          const std::string& srdf_path, 
+                          const std::string& srdf_path="", 
                           const std::string& packages_path="");
 
                 using Manipulator::RobotData::getVerbose;
