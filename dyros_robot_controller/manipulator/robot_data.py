@@ -4,7 +4,7 @@ import dyros_robot_controller_cpp_wrapper as drc
 
 
 class RobotData(drc.ManipulatorRobotData):
-    def __init__(self, urdf_path: str, srdf_path: str, packages_path: str):
+    def __init__(self, urdf_path: str, srdf_path: str="", packages_path: str=""):
         super().__init__(urdf_path, srdf_path, packages_path)
         
     def get_verbose(self) -> str:

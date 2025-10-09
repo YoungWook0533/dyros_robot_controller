@@ -7,21 +7,21 @@ import dyros_robot_controller_cpp_wrapper as drc
 class RobotData(drc.MobileManipulatorRobotData):
     def __init__(self,
                 mobile_param: KinematicParam,
-                urdf_path: str,
-                srdf_path: str,
-                packages_path: str,
                 joint_idx: JointIndex,
                 actuator_idx: ActuatorIndex,
+                urdf_path: str,
+                srdf_path: str="",
+                packages_path: str="",
                 ):
         self._mobile_kine_param = mobile_param
         self._joint_idx = joint_idx
         self._actuator_idx = actuator_idx
         super().__init__(self._mobile_kine_param.cpp(),
+                         self._joint_idx.cpp(),
+                         self._actuator_idx.cpp(),
                          urdf_path,
                          srdf_path,
                          packages_path,
-                         self._joint_idx.cpp(),
-                         self._actuator_idx.cpp(),
                          )
         
     def get_verbose(self) -> str:

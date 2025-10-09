@@ -331,7 +331,7 @@ BOOST_PYTHON_MODULE(dyros_robot_controller_cpp_wrapper)
     typedef Manipulator::MinDistResult (MM_RD::*Min9)(const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const VectorXd&, const bool&, const bool&, const bool);
     typedef Manipulator::ManipulabilityResult (MM_RD::*Man5)(const VectorXd&, const VectorXd&, const bool&, const bool&, const std::string&);
 
-    bp::class_<MM_RD, bp::bases<MN_RD, MO_RD>, boost::noncopyable>("MobileManipulatorRobotData", bp::init<const Mobile::KinematicParam&, const std::string&, const std::string&, const std::string&, const MobileManipulator::JointIndex&, const MobileManipulator::ActuatorIndex&>())
+    bp::class_<MM_RD, bp::bases<MN_RD, MO_RD>, boost::noncopyable>("MobileManipulatorRobotData", bp::init<const Mobile::KinematicParam&, const MobileManipulator::JointIndex&, const MobileManipulator::ActuatorIndex&, const std::string&, const std::string&, const std::string&>())
         .def("getVerbose",                                     &MM_RD::getVerbose)
         .def("updateState",                  static_cast<Upd6>(&MM_RD::updateState))
         .def("computeMassMatrix",            static_cast<Mat3>(&MM_RD::computeMassMatrix))

@@ -4,8 +4,7 @@
 #include <shared_mutex>
 #include <Eigen/Dense>
 #include <math.h>
-
-// #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <filesystem>
 
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/frames.hpp>
@@ -37,11 +36,16 @@ namespace drc
             public:
                 EIGEN_MAKE_ALIGNED_OPERATOR_NEW
                 RobotData(const Mobile::KinematicParam& mobile_param,
+                          const JointIndex& joint_idx,
+                          const ActuatorIndex& actuator_idx,
+                          const std::string& urdf_path,
+                          const std::string& packages_path="");
+                RobotData(const Mobile::KinematicParam& mobile_param,
+                          const JointIndex& joint_idx,
+                          const ActuatorIndex& actuator_idx,
                           const std::string& urdf_path,
                           const std::string& srdf_path, 
-                          const std::string& packages_path, 
-                          const JointIndex& joint_idx,
-                          const ActuatorIndex& actuator_idx);
+                          const std::string& packages_path="");
 
                 using Manipulator::RobotData::getVerbose;
                 using Mobile::RobotData::getVerbose;
