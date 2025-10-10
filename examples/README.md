@@ -45,7 +45,7 @@ cd C++
 
 All controller examples — **Franka FR3** ([C++](C++/src/fr3_controller.cpp) / [Python](python/fr3_controller.py)) and **Summit XLS** ([C++](C++/src/xls_controller.cpp) / [Python](python/xls_controller.py)) — follow the same three basic execution stages:
 
-### 1. `Initialization`
+### 1. Initialization
 Executed once at the beginning of the simulation or robot startup.  
 - Initializes all control-related variables.  
 - Loads **`robot_data`** and **`robot_controller`** objects provided by `dyros_robot_controller`.  
@@ -96,3 +96,4 @@ Each mode can be selected from the terminal using the assigned key number.
 | `b` / `v` | Rotate CCW / CW | +ω / -ω |
 
 ---
+
