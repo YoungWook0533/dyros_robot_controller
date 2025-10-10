@@ -38,8 +38,8 @@ python3 dyros_robot_controller_example.py --robot_name fr3 # or xls
 
 Run C++ Example:
 ```bash
-cd C++
-.dyros_robot_controller_example fr3 # or xls
+cd C++/build
+./dyros_robot_controller_example fr3 # or xls
 ```
 ## Brief Code Explanation
 
@@ -96,4 +96,5 @@ Each mode can be selected from the terminal using the assigned key number.
 | `b` / `v` | Rotate CCW / CW | +ω / -ω |
 
 ---
+
 
