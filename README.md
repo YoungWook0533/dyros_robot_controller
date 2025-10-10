@@ -62,8 +62,11 @@ source install/setup.bash
 
 - Mobile robot kinematic control  
 - Advanced manipulator control strategies  
-- Whole-body control for mobile manipulators  
+- Whole-body control for mobile manipulators
 
+- ## Examples
+
+In the [examples](https://github.com/JunHeonYoon/dyros_robot_controller/tree/main/examples) directory, we provide some basic examples of using dyros robot controller in Python and C++.
 It enables fast prototyping of novel controllers and facilitates seamless integration between simulation and real-world robotics platforms.  
 
 ---
