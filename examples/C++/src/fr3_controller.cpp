@@ -7,18 +7,18 @@
 FR3Controller::FR3Controller(const double dt)
 : dt_(dt)
 {
-  // Paths to URDF / SRDF files for the robot model
+  // Paths to URDF/SRDF (model files)
   const std::string urdf = std::string(ROBOTS_DIRECTORY) + "/fr3/" + "fr3.urdf";
   const std::string srdf = std::string(ROBOTS_DIRECTORY) + "/fr3/" + "fr3.srdf";
 
-  // Initialize robot model and controller (Dyros Robot Controller)
+  // Instantiate dyros robot model/controller
   robot_data_ = std::make_shared<drc::Manipulator::RobotData>(urdf, srdf);
   robot_controller_ = std::make_shared<drc::Manipulator::RobotController>(dt_, robot_data_);
 
-  // Number of degrees of freedom
+  // Degree of freedom
   dof_ = robot_data_->getDof();
 
-  // --- Joint space state variables ---
+  // --- Joint-space states (initialize to zero/snapshot defaults) ---
   q_.setZero(dof_);      
   qdot_.setZero(dof_);
   q_desired_.setZero(dof_);  
@@ -27,7 +27,7 @@ FR3Controller::FR3Controller(const double dt)
   qdot_init_.setZero(dof_);
   tau_desired_.setZero(dof_);
 
-  // --- Task space (End-Effector) state variables ---
+  // --- Task-space states (EE pose/twist and snapshots) ---
   x_.setIdentity();         
   xdot_.setZero();          
   x_desired_.setIdentity(); 
@@ -35,10 +35,10 @@ FR3Controller::FR3Controller(const double dt)
   x_init_.setIdentity();    
   xdot_init_.setZero();    
 
-  // Information for fr3 URDF
+  // Print FR3 URDF info
   std::cout << "info: \n" << robot_data_->getVerbose() << std::endl; 
 
-  // Start a keyboard listener (runs in a background thread)
+  // Global keyboard listener (non-blocking)
   startKeyListener_();
 }
 
@@ -51,10 +51,10 @@ void FR3Controller::updateModel(const double current_time,
                                 const std::unordered_map<std::string, double>& qpos_dict,
                                 const std::unordered_map<std::string, double>& qvel_dict)
 {
-  // Update simulation time
+  // Time update (shared convention)
   sim_time_ = current_time;
 
-  // Read joint positions/velocities from simulation dictionaries
+  // Read joint states (joint naming must match the simulator)
   for (size_t i = 0; i < dof_; ++i) 
   {
     const std::string key = "fr3_joint" + std::to_string(i+1);
@@ -62,7 +62,7 @@ void FR3Controller::updateModel(const double current_time,
     qdot_(i) = qvel_dict.at(key);
   }
 
-  // Update kinematics/dynamics in RobotData
+  // Push to dyros robot model and cache EE pose/twist
   robot_data_->updateState(q_, qdot_);
   x_  = robot_data_->getPose(ee_link_name_);
   xdot_ = robot_data_->getVelocity(ee_link_name_);
@@ -70,24 +70,29 @@ void FR3Controller::updateModel(const double current_time,
 
 std::unordered_map<std::string, double> FR3Controller::compute() 
 {
-  // When control mode changes → reset reference states
+  // One-time init per mode entry (snapshot current measured states)
   if (is_mode_changed_) 
   {
     is_mode_changed_ = false;
     control_start_time_ = sim_time_;
+
     q_init_ = q_;
     qdot_init_ = qdot_;
     x_init_ = x_;
     xdot_init_ = xdot_;
+
+    // Reset desired trajectories to snapshots
     q_desired_ = q_init_;
     qdot_desired_.setZero(dof_);
     x_desired_ = x_init_;
     xdot_desired_.setZero();
   }
-  // --- Control mode: Home (move to a predefined joint position) ---
+
+  // --- Mode: Home (joint-space cubic to a predefined posture) ---
   if (control_mode_ == "Home") {
     Eigen::Vector7d q_home;
     q_home << 0.0, 0.0, 0.0, -M_PI/2., 0.0, M_PI/2., M_PI / 4.;
+
     q_desired_ = robot_controller_->moveJointPositionCubic(q_home,
                                                            Eigen::VectorXd::Zero(dof_),
                                                            q_init_,
@@ -95,6 +100,7 @@ std::unordered_map<std::string, double> FR3Controller::compute()
                                                            sim_time_,
                                                            control_start_time_,
                                                            3.0);
+
     qdot_desired_ = robot_controller_->moveJointVelocityCubic(q_home,
                                                               Eigen::VectorXd::Zero(dof_),
                                                               q_init_,
@@ -102,16 +108,17 @@ std::unordered_map<std::string, double> FR3Controller::compute()
                                                               sim_time_,
                                                               control_start_time_,
                                                               3.0);
+
     tau_desired_ = robot_controller_->moveJointTorqueStep(q_desired_, qdot_desired_);
 
-    // Alternative: directly synthesize torque over time with a single API
+    // Alternative: synthesize torque over time with a single API
     // tau_desired = robot_controller->moveJointTorqueCubic(...)
   }
-  // --- Control mode: QPIK (Inverse Kinematics using QP in task space) ---
+  // --- Mode: QPIK (task-space, QP-based IK with cubic profiling) ---
   else if (control_mode_ == "QPIK") 
   {
     Eigen::Affine3d target_x = x_init_;
-    target_x.translation() += Eigen::Vector3d(0.0, 0.1, 0.1);
+    target_x.translation() += Eigen::Vector3d(0.0, 0.1, 0.1); // +10 cm in Y and Z
 
     qdot_desired_ = robot_controller_->QPIKCubic(target_x, 
                                                  Eigen::VectorXd::Zero(6),
@@ -122,16 +129,17 @@ std::unordered_map<std::string, double> FR3Controller::compute()
                                                  3.0, 
                                                  ee_link_name_);
 
+    // Simple Euler integrate desired joint positions from qdot_desired
     q_desired_   = q_ + qdot_desired_ * dt_;
     tau_desired_ = robot_controller_->moveJointTorqueStep(q_desired_, qdot_desired_);
   }
-  // --- Control mode: Gravity Compensation ---
+  // --- Mode: Gravity Compensation (no tracking) ---
   else if (control_mode_ == "Gravity Compensation") 
   {
     tau_desired_ = robot_data_->getGravity();
   }
 
-  // Return control input dictionary (name → torque)
+  // Format output for simulator actuators: joint name -> tau
   std::unordered_map<std::string, double> ctrl_dict;
   ctrl_dict.reserve(dof_);
   for (size_t i = 0; i < dof_; ++i) 
@@ -143,7 +151,7 @@ std::unordered_map<std::string, double> FR3Controller::compute()
 
 void FR3Controller::setMode(const std::string& control_mode) 
 {
-  // Change mode and flag reset
+  // Switch control mode and trigger per-mode re-initialization
   is_mode_changed_ = true;
   control_mode_ = control_mode;
   std::cout << "Control Mode Changed: " << control_mode_ << std::endl;
@@ -161,7 +169,7 @@ void FR3Controller::startKeyListener_()
   stop_key_ = false;
   key_thread_ = std::thread(&FR3Controller::keyLoop_, this);
 
-  std::cout << "[FR3Controller] Keyboard: [1]=Home, [2]=QPIK, [3]=Gravity Compensation, [q]=quit listener\n";
+  std::cout << "[FR3Controller] Keyboard: [1]=Home, [2]=QPIK, [3]=Gravity Compensation\n";
 }
 
 void FR3Controller::stopKeyListener_() 

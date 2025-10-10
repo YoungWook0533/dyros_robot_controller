@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "lodepng.h"
+#include "mujoco/lodepng.h"
 #include <mujoco/mjdata.h>
 #include <mujoco/mjui.h>
 #include <mujoco/mjvisualize.h>
