@@ -21,8 +21,8 @@ namespace drc
                  * @brief Constructor.
                  *
                  * @param dt         (double) Control loop time step in seconds.
-                 * @param robot_data (std::shared_ptr<RobotData::Mobile::RobotController>)
-                 *                   Shared pointer to robot kinematic model.
+                 * @param robot_data (std::shared_ptr<Mobile::RobotData>)
+                 *                   Shared pointer to the RobotData class.
                 */
                 RobotController(const double& dt, std::shared_ptr<Mobile::RobotData> robot_data);
 

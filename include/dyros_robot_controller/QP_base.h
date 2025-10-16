@@ -13,16 +13,22 @@ namespace drc
 {
     namespace QP
     {
+        /**
+         * @brief Struct to hold time durations for various stages of the QP solving process.
+         */
         struct TimeDuration
         {
-            double set_qp;
-            double set_cost;
-            double set_bound;
-            double set_ineq;
-            double set_eq;
-            double set_constraint;
-            double set_solver;
-            double solve_qp;
+            double set_qp;          // Time taken to set up the QP problem.(set_cost + set_bound + set_ineq + set_eq + set_constraint)
+            double set_cost;        // Time taken to set the cost function.
+            double set_bound;       // Time taken to set the bound constraints.
+            double set_ineq;        // Time taken to set the inequality constraints.
+            double set_eq;          // Time taken to set equality constraints.
+            double set_constraint;  // Time taken to set constraints. (bound, inequality, equality)
+            double set_solver;      // Time taken to set the solver.
+            double solve_qp;        // Time taken to solve the QP problem.
+            /**
+             * @brief Set all time durations to zero.
+             */
             void setZero()
             {
                 set_qp = 0;
@@ -35,11 +41,27 @@ namespace drc
                 solve_qp = 0;
             }
         };
-        
+        /**
+         * @brief Base class for QP solver.
+         * 
+         * This class provides a framework for setting up and solving QP problems.
+         * It includes methods for setting the size of the QP, defining cost functions,
+         * constraints, and solving the QP problem.
+         */
         class QPBase
         {
             public:
+                /**
+                 * @brief Cosntructor.
+                 */
                 QPBase(){}
+                /**
+                 * @brief Set the size and initialize each variables of the QP problem.
+                 * @param nx      (int) Number of decision variables.
+                 * @param nbc     (int) Number of bound constraints.
+                 * @param nineqc  (int) Number of inequality constraints.
+                 * @param neqc    (int) Number of equality constraints.
+                 */
                 void setQPsize(const int &nx, const int&nbc, const int &nineqc, const int &neqc)
                 {
                     assert(nbc == nx || nbc == 0);
@@ -69,6 +91,12 @@ namespace drc
             
                     time_status_.setZero();
                 }
+                /**
+                 * @brief Solve the QP problem.
+                 * @param sol          (Eigen::MatrixXd) Output solution matrix.
+                 * @param time_status  (TimeDuration) Output time durations structure for the QP solving process.
+                 * @return (bool) True if the QP was solved successfully.
+                 */
                 bool solveQP(MatrixXd &sol, TimeDuration &time_status)
                 {
                     timer_.reset();
@@ -152,10 +180,25 @@ namespace drc
                 }
             
             private:
+                /**
+                 * @brief Set the cost function for the QP problem.
+                 */
                 virtual void setCost() = 0;
+                /**
+                 * @brief Set the bound constraints such as control input limits for the QP problem.
+                 */
                 virtual void setBoundConstraint() = 0;
+                /**
+                 * @brief Set the inequality constraints such as joint angle limits for the QP problem.
+                 */
                 virtual void setIneqConstraint() = 0;
+                /**
+                 * @brief Set the equality constraints such as equations of motion for the QP problem.
+                 */
                 virtual void setEqConstraint() = 0;
+                /**
+                 * @brief Cumulate constraints to solve the QP problem.
+                 */
                 void setConstraint()
                 {
                     // Bound Constraint
@@ -190,27 +233,27 @@ namespace drc
                 int nineqc_; // number of inequality constraints
                 int neqc_;   // number of equality constraints
 
-                MatrixXd P_ds_;
-                VectorXd q_ds_;
+                MatrixXd P_ds_;                 // Hessian matrix
+                VectorXd q_ds_;                 // Gradient vector
 
-                MatrixXd A_ds_;
-                VectorXd l_ds_;
-                VectorXd u_ds_;
+                MatrixXd A_ds_;                 // Constraint matrix
+                VectorXd l_ds_;                 // Lower bounds for constraints
+                VectorXd u_ds_;                 // Upper bounds for constraints
 
-                MatrixXd A_ineq_ds_;
-                VectorXd l_ineq_ds_;
-                VectorXd u_ineq_ds_;
+                MatrixXd A_ineq_ds_;            // Inequality constraint matrix
+                VectorXd l_ineq_ds_;            // Lower bounds for inequality constraints
+                VectorXd u_ineq_ds_;            // Upper bounds for inequality constraints
 
-                VectorXd l_bound_ds_;
-                VectorXd u_bound_ds_;
+                VectorXd l_bound_ds_;           // Lower bounds for bound constraints
+                VectorXd u_bound_ds_;           // Upper bounds for bound constraints
 
-                MatrixXd A_eq_ds_;
-                VectorXd b_eq_ds_;
+                MatrixXd A_eq_ds_;              // Equality constraint matrix
+                VectorXd b_eq_ds_;              // Bounds for equality constraints
 
 
-                OsqpEigen::Status qp_status_;
-                SuhanBenchmark timer_;
-                TimeDuration time_status_;
+                OsqpEigen::Status qp_status_;   // Status of the QP solver
+                SuhanBenchmark timer_;          // Timer for benchmarking
+                TimeDuration time_status_;      // Time durations structure for the QP solving process
         };
     } // namespace QP
 } // namespace drc

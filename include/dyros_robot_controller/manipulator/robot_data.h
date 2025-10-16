@@ -227,7 +227,7 @@ namespace drc
                  * @param with_grad     (bool) If true, get the gradient of the minimum distance.
                  * @param with_graddot  (bool) If true, get the gradient time variation of the minimum distance.
                  * @param verbose       (bool) If true, prints the closest pair of links and their minimum distance.
-                 * @return (MinDistResult) Minimum distance result.
+                 * @return (MinDistResult) Minimum distance result containing distance, gradient, and gradient time variation.
                  */
                 virtual MinDistResult getMinDistance(const bool& with_grad, const bool& with_graddot, const bool verbose);
                 /**
