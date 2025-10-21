@@ -16,7 +16,7 @@ include_directories(include)
 # dyros_robot_controller — HOW TO USE IN CMAKE
 # ---------------------------------------------------------
 # =========================================================
-find_package(catkin REQUIRED COMPONENTS dyros_robot_controller)
+find_package(dyros_robot_controller REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OsqpEigen REQUIRED)
 find_package(pinocchio REQUIRED)
@@ -32,16 +32,16 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/xls_controller.cpp
 )
 
-# Include dirs from catkin
+# Include dirs
 target_include_directories(${PROJECT_NAME} PRIVATE
-  ${catkin_INCLUDE_DIRS}
+  ${dyros_robot_controller_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OsqpEigen_INCLUDE_DIRS}
 )
 
 # Link the dyros controller (PRIMARY dependency)
 target_link_libraries(${PROJECT_NAME} PUBLIC
-  ${catkin_LIBRARIES}
+  ${dyros_robot_controller_LIBRARIES}
   OsqpEigen::OsqpEigen
   pinocchio::pinocchio
 )
