@@ -6,13 +6,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-)
+find_package(catkin REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development NumPy)
 find_package(Boost REQUIRED COMPONENTS python${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR})
 find_package(eigenpy            REQUIRED)
