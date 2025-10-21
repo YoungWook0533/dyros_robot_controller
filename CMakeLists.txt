@@ -19,7 +19,6 @@ catkin_python_setup()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs sensor_msgs
   DEPENDS Eigen3 pinocchio OsqpEigen eigenpy
 )
 
